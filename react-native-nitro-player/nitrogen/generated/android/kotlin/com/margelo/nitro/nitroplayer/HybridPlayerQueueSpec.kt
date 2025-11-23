@@ -64,6 +64,15 @@ abstract class HybridPlayerQueueSpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun getQueue(): Array<TrackItem>
+  
+  abstract fun onQueueChanged(callback: (queue: Array<TrackItem>, operation: QueueOperation?) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onQueueChanged_cxx(callback: Func_void_std__vector_TrackItem__std__optional_QueueOperation_): Unit {
+    val __result = onQueueChanged(callback)
+    return __result
+  }
 
   private external fun initHybrid(): HybridData
 

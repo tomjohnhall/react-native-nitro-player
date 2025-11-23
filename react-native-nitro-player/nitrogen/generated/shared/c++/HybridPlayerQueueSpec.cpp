@@ -19,6 +19,7 @@ namespace margelo::nitro::nitroplayer {
       prototype.registerHybridMethod("deleteTrack", &HybridPlayerQueueSpec::deleteTrack);
       prototype.registerHybridMethod("clearQueue", &HybridPlayerQueueSpec::clearQueue);
       prototype.registerHybridMethod("getQueue", &HybridPlayerQueueSpec::getQueue);
+      prototype.registerHybridMethod("onQueueChanged", &HybridPlayerQueueSpec::onQueueChanged);
     });
   }
 

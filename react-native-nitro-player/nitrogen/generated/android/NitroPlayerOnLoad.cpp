@@ -16,6 +16,7 @@
 #include <NitroModules/HybridObjectRegistry.hpp>
 
 #include "JHybridPlayerQueueSpec.hpp"
+#include "JFunc_void_std__vector_TrackItem__std__optional_QueueOperation_.hpp"
 #include <NitroModules/DefaultConstructableObject.hpp>
 
 namespace margelo::nitro::nitroplayer {
@@ -28,6 +29,7 @@ int initialize(JavaVM* vm) {
   return facebook::jni::initialize(vm, [] {
     // Register native JNI methods
     margelo::nitro::nitroplayer::JHybridPlayerQueueSpec::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_std__vector_TrackItem__std__optional_QueueOperation__cxx::registerNatives();
 
     // Register Nitro Hybrid Objects
     HybridObjectRegistry::registerHybridObjectConstructor(

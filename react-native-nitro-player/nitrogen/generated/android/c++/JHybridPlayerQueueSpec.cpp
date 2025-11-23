@@ -9,12 +9,19 @@
 
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
+// Forward declaration of `QueueOperation` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 
 #include "TrackItem.hpp"
 #include <vector>
 #include "JTrackItem.hpp"
 #include <string>
 #include <optional>
+#include "QueueOperation.hpp"
+#include <functional>
+#include "JFunc_void_std__vector_TrackItem__std__optional_QueueOperation_.hpp"
+#include <NitroModules/JNICallable.hpp>
+#include "JQueueOperation.hpp"
 
 namespace margelo::nitro::nitroplayer {
 
@@ -86,6 +93,10 @@ namespace margelo::nitro::nitroplayer {
       }
       return __vector;
     }();
+  }
+  void JHybridPlayerQueueSpec::onQueueChanged(const std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>& callback) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__vector_TrackItem__std__optional_QueueOperation_::javaobject> /* callback */)>("onQueueChanged_cxx");
+    method(_javaPart, JFunc_void_std__vector_TrackItem__std__optional_QueueOperation__cxx::fromCpp(callback));
   }
 
 } // namespace margelo::nitro::nitroplayer

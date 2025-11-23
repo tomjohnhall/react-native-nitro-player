@@ -19,6 +19,7 @@ public protocol HybridPlayerQueueSpec_protocol: HybridObject {
   func deleteTrack(id: String) throws -> Void
   func clearQueue() throws -> Void
   func getQueue() throws -> [TrackItem]
+  func onQueueChanged(callback: @escaping (_ queue: [TrackItem], _ operation: QueueOperation?) -> Void) throws -> Void
 }
 
 public extension HybridPlayerQueueSpec_protocol {

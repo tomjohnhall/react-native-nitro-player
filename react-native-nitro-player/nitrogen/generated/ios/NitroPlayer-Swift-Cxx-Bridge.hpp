@@ -10,6 +10,8 @@
 // Forward declarations of C++ defined types
 // Forward declaration of `HybridPlayerQueueSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
+// Forward declaration of `QueueOperation` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 
@@ -19,9 +21,11 @@ namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 
 // Include C++ defined types
 #include "HybridPlayerQueueSpec.hpp"
+#include "QueueOperation.hpp"
 #include "TrackItem.hpp"
 #include <NitroModules/Result.hpp>
 #include <exception>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -57,6 +61,43 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline double get_std__optional_double_(const std::optional<double>& optional) noexcept {
     return *optional;
+  }
+  
+  // pragma MARK: std::optional<QueueOperation>
+  /**
+   * Specialized version of `std::optional<QueueOperation>`.
+   */
+  using std__optional_QueueOperation_ = std::optional<QueueOperation>;
+  inline std::optional<QueueOperation> create_std__optional_QueueOperation_(const QueueOperation& value) noexcept {
+    return std::optional<QueueOperation>(value);
+  }
+  inline bool has_value_std__optional_QueueOperation_(const std::optional<QueueOperation>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline QueueOperation get_std__optional_QueueOperation_(const std::optional<QueueOperation>& optional) noexcept {
+    return *optional;
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>
+  /**
+   * Specialized version of `std::function<void(const std::vector<TrackItem>&, std::optional<QueueOperation>)>`.
+   */
+  using Func_void_std__vector_TrackItem__std__optional_QueueOperation_ = std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::vector<TrackItem>& / * queue * /, std::optional<QueueOperation> / * operation * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__vector_TrackItem__std__optional_QueueOperation__Wrapper final {
+  public:
+    explicit Func_void_std__vector_TrackItem__std__optional_QueueOperation__Wrapper(std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>&& func): _function(std::make_unique<std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>>(std::move(func))) {}
+    inline void call(std::vector<TrackItem> queue, std::optional<QueueOperation> operation) const noexcept {
+      _function->operator()(queue, operation);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__vector_TrackItem__std__optional_QueueOperation_ create_Func_void_std__vector_TrackItem__std__optional_QueueOperation_(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__vector_TrackItem__std__optional_QueueOperation__Wrapper wrap_Func_void_std__vector_TrackItem__std__optional_QueueOperation_(Func_void_std__vector_TrackItem__std__optional_QueueOperation_ value) noexcept {
+    return Func_void_std__vector_TrackItem__std__optional_QueueOperation__Wrapper(std::move(value));
   }
   
   // pragma MARK: std::shared_ptr<HybridPlayerQueueSpec>

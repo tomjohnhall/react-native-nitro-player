@@ -10,7 +10,8 @@
   ],
   "scripts": {
     "player": "bun --cwd react-native-nitro-player",
-    "specs" : "bun player specs"
+    "specs" : "bun player specs",
+    "example" : "bun --cwd example"
   
   },
   "devDependencies": {

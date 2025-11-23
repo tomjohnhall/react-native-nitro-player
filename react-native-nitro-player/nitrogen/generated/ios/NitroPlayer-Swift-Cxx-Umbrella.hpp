@@ -10,14 +10,18 @@
 // Forward declarations of C++ defined types
 // Forward declaration of `HybridPlayerQueueSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
+// Forward declaration of `QueueOperation` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 
 // Include C++ defined types
 #include "HybridPlayerQueueSpec.hpp"
+#include "QueueOperation.hpp"
 #include "TrackItem.hpp"
 #include <NitroModules/Result.hpp>
 #include <exception>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>

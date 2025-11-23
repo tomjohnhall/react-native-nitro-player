@@ -59,6 +59,7 @@ namespace margelo::nitro::nitroplayer {
     void deleteTrack(const std::string& id) override;
     void clearQueue() override;
     std::vector<TrackItem> getQueue() override;
+    void onQueueChanged(const std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>& callback) override;
 
   private:
     friend HybridBase;

@@ -15,11 +15,15 @@
 
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
+// Forward declaration of `QueueOperation` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 
 #include "TrackItem.hpp"
 #include <vector>
 #include <optional>
 #include <string>
+#include "QueueOperation.hpp"
+#include <functional>
 
 namespace margelo::nitro::nitroplayer {
 
@@ -57,6 +61,7 @@ namespace margelo::nitro::nitroplayer {
       virtual void deleteTrack(const std::string& id) = 0;
       virtual void clearQueue() = 0;
       virtual std::vector<TrackItem> getQueue() = 0;
+      virtual void onQueueChanged(const std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>& callback) = 0;
 
     protected:
       // Hybrid Setup

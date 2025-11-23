@@ -1,15 +1,5 @@
 import type { HybridObject } from 'react-native-nitro-modules';
-
-
-export interface TrackItem {
-    id: string;
-    title: string;
-    artist: string;
-    album: string;
-    duration: number;
-    url: string;
-    artwork: string;
-}
+import type { QueueOperation, TrackItem } from '../types/PlayerQueue';
 
 
 
@@ -20,6 +10,7 @@ export interface PlayerQueue extends HybridObject<{android: "kotlin" , ios: "swi
     deleteTrack(id: string): void;
     clearQueue(): void;
     getQueue(): TrackItem[];
+    onQueueChanged(callback: (queue: TrackItem[], operation?: QueueOperation) => void): void;
 }
 
 

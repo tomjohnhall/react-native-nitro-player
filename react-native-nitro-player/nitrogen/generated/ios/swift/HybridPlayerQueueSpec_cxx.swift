@@ -178,4 +178,32 @@ open class HybridPlayerQueueSpec_cxx {
       return bridge.create_Result_std__vector_TrackItem__(__exceptionPtr)
     }
   }
+  
+  @inline(__always)
+  public final func onQueueChanged(callback: bridge.Func_void_std__vector_TrackItem__std__optional_QueueOperation_) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.onQueueChanged(callback: { () -> ([TrackItem], QueueOperation?) -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void_std__vector_TrackItem__std__optional_QueueOperation_(callback)
+        return { (__queue: [TrackItem], __operation: QueueOperation?) -> Void in
+          __wrappedFunction.call({ () -> bridge.std__vector_TrackItem_ in
+            var __vector = bridge.create_std__vector_TrackItem_(__queue.count)
+            for __item in __queue {
+              __vector.push_back(__item)
+            }
+            return __vector
+          }(), { () -> bridge.std__optional_QueueOperation_ in
+            if let __unwrappedValue = __operation {
+              return bridge.create_std__optional_QueueOperation_(__unwrappedValue)
+            } else {
+              return .init()
+            }
+          }())
+        }
+      }())
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
 }
