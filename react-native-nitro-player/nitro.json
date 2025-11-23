@@ -1,0 +1,24 @@
+{
+  "$schema": "https://nitro.margelo.com/nitro.schema.json",
+  "cxxNamespace": [
+    "nitroplayer"
+  ],
+  "ios": {
+    "iosModuleName": "NitroPlayer"
+  },
+  "android": {
+    "androidNamespace": [
+      "nitroplayer"
+    ],
+    "androidCxxLibName": "NitroPlayer"
+  },
+  "autolinking": {
+    "PlayerQueue": {
+      "swift": "HybridPlayerQueue",
+      "kotlin": "HybridPlayerQueue"
+    }
+  },
+  "ignorePaths": [
+    "**/node_modules"
+  ]
+}
