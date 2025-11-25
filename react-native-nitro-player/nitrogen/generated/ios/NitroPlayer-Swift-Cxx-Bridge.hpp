@@ -10,19 +10,30 @@
 // Forward declarations of C++ defined types
 // Forward declaration of `HybridPlayerQueueSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
+// Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridTrackPlayerSpec; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
+// Forward declaration of `Reason` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
+// Forward declaration of `TrackPlayerState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
 // Forward declarations of Swift defined types
 // Forward declaration of `HybridPlayerQueueSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
+// Forward declaration of `HybridTrackPlayerSpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 
 // Include C++ defined types
 #include "HybridPlayerQueueSpec.hpp"
+#include "HybridTrackPlayerSpec.hpp"
 #include "QueueOperation.hpp"
+#include "Reason.hpp"
 #include "TrackItem.hpp"
+#include "TrackPlayerState.hpp"
 #include <NitroModules/Result.hpp>
 #include <exception>
 #include <functional>
@@ -129,5 +140,98 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   inline Result_std__vector_TrackItem__ create_Result_std__vector_TrackItem__(const std::exception_ptr& error) noexcept {
     return Result<std::vector<TrackItem>>::withError(error);
   }
+  
+  // pragma MARK: std::optional<Reason>
+  /**
+   * Specialized version of `std::optional<Reason>`.
+   */
+  using std__optional_Reason_ = std::optional<Reason>;
+  inline std::optional<Reason> create_std__optional_Reason_(const Reason& value) noexcept {
+    return std::optional<Reason>(value);
+  }
+  inline bool has_value_std__optional_Reason_(const std::optional<Reason>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline Reason get_std__optional_Reason_(const std::optional<Reason>& optional) noexcept {
+    return *optional;
+  }
+  
+  // pragma MARK: std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>
+  /**
+   * Specialized version of `std::function<void(const TrackItem&, std::optional<Reason>)>`.
+   */
+  using Func_void_TrackItem_std__optional_Reason_ = std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>;
+  /**
+   * Wrapper class for a `std::function<void(const TrackItem& / * track * /, std::optional<Reason> / * reason * /)>`, this can be used from Swift.
+   */
+  class Func_void_TrackItem_std__optional_Reason__Wrapper final {
+  public:
+    explicit Func_void_TrackItem_std__optional_Reason__Wrapper(std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>&& func): _function(std::make_unique<std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>>(std::move(func))) {}
+    inline void call(TrackItem track, std::optional<Reason> reason) const noexcept {
+      _function->operator()(track, reason);
+    }
+  private:
+    std::unique_ptr<std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_TrackItem_std__optional_Reason_ create_Func_void_TrackItem_std__optional_Reason_(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_TrackItem_std__optional_Reason__Wrapper wrap_Func_void_TrackItem_std__optional_Reason_(Func_void_TrackItem_std__optional_Reason_ value) noexcept {
+    return Func_void_TrackItem_std__optional_Reason__Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>
+  /**
+   * Specialized version of `std::function<void(TrackPlayerState, std::optional<Reason>)>`.
+   */
+  using Func_void_TrackPlayerState_std__optional_Reason_ = std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>;
+  /**
+   * Wrapper class for a `std::function<void(TrackPlayerState / * state * /, std::optional<Reason> / * reason * /)>`, this can be used from Swift.
+   */
+  class Func_void_TrackPlayerState_std__optional_Reason__Wrapper final {
+  public:
+    explicit Func_void_TrackPlayerState_std__optional_Reason__Wrapper(std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>&& func): _function(std::make_unique<std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>>(std::move(func))) {}
+    inline void call(int state, std::optional<Reason> reason) const noexcept {
+      _function->operator()(static_cast<TrackPlayerState>(state), reason);
+    }
+  private:
+    std::unique_ptr<std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_TrackPlayerState_std__optional_Reason_ create_Func_void_TrackPlayerState_std__optional_Reason_(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_TrackPlayerState_std__optional_Reason__Wrapper wrap_Func_void_TrackPlayerState_std__optional_Reason_(Func_void_TrackPlayerState_std__optional_Reason_ value) noexcept {
+    return Func_void_TrackPlayerState_std__optional_Reason__Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::function<void(double /* position */, double /* totalDuration */)>
+  /**
+   * Specialized version of `std::function<void(double, double)>`.
+   */
+  using Func_void_double_double = std::function<void(double /* position */, double /* totalDuration */)>;
+  /**
+   * Wrapper class for a `std::function<void(double / * position * /, double / * totalDuration * /)>`, this can be used from Swift.
+   */
+  class Func_void_double_double_Wrapper final {
+  public:
+    explicit Func_void_double_double_Wrapper(std::function<void(double /* position */, double /* totalDuration */)>&& func): _function(std::make_unique<std::function<void(double /* position */, double /* totalDuration */)>>(std::move(func))) {}
+    inline void call(double position, double totalDuration) const noexcept {
+      _function->operator()(position, totalDuration);
+    }
+  private:
+    std::unique_ptr<std::function<void(double /* position */, double /* totalDuration */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_double_double create_Func_void_double_double(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_double_double_Wrapper wrap_Func_void_double_double(Func_void_double_double value) noexcept {
+    return Func_void_double_double_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridTrackPlayerSpec>
+  /**
+   * Specialized version of `std::shared_ptr<HybridTrackPlayerSpec>`.
+   */
+  using std__shared_ptr_HybridTrackPlayerSpec_ = std::shared_ptr<HybridTrackPlayerSpec>;
+  std::shared_ptr<HybridTrackPlayerSpec> create_std__shared_ptr_HybridTrackPlayerSpec_(void* NON_NULL swiftUnsafePointer) noexcept;
+  void* NON_NULL get_std__shared_ptr_HybridTrackPlayerSpec_(std__shared_ptr_HybridTrackPlayerSpec_ cppType);
+  
+  // pragma MARK: std::weak_ptr<HybridTrackPlayerSpec>
+  using std__weak_ptr_HybridTrackPlayerSpec_ = std::weak_ptr<HybridTrackPlayerSpec>;
+  inline std__weak_ptr_HybridTrackPlayerSpec_ weakify_std__shared_ptr_HybridTrackPlayerSpec_(const std::shared_ptr<HybridTrackPlayerSpec>& strong) noexcept { return strong; }
 
 } // namespace margelo::nitro::nitroplayer::bridge::swift

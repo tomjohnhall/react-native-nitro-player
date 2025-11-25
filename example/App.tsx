@@ -8,8 +8,8 @@
 import { NewAppScreen } from '@react-native/new-app-screen';
 import { useEffect, useState } from 'react';
 import { StatusBar, StyleSheet, useColorScheme, View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { PlayerQueue } from 'react-native-nitro-player';
-import type { TrackItem, QueueOperation } from '../react-native-nitro-player/src/types/PlayerQueue';
+import { PlayerQueue, TrackPlayer } from 'react-native-nitro-player';
+import type { TrackItem, QueueOperation, TrackPlayerState, Reason } from '../react-native-nitro-player/src/types/PlayerQueue';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -22,6 +22,8 @@ function App() {
 function AppContent() {
   const [queue, setQueue] = useState<TrackItem[]>([]);
   const [lastOperation, setLastOperation] = useState<QueueOperation | undefined>(undefined);
+  const [playbackState, setPlaybackState] = useState<number | undefined>(undefined);
+  const [currentTrack, setCurrentTrack] = useState<TrackItem | undefined>(undefined);
 
   // Sample tracks for demonstration
   const sampleTracks: TrackItem[] = [
@@ -31,8 +33,8 @@ function AppContent() {
       artist: 'Lofi Beats',
       album: 'Chill Vibes',
       duration: 182.0,
-      url: 'https://example.com/audio/sunset_drive.mp3',
-      artwork: 'https://example.com/artwork/sunset.jpg',
+      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+      artwork: 'https://via.placeholder.com/150/0000FF/808080?Text=Sunset',
     },
     {
       id: '2',
@@ -40,8 +42,8 @@ function AppContent() {
       artist: 'Nightfall',
       album: 'Dreamscapes',
       duration: 204.0,
-      url: 'https://example.com/audio/midnight_rain.mp3',
-      artwork: 'https://example.com/artwork/midnight.jpg',
+      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+      artwork: 'https://via.placeholder.com/150/FF0000/FFFFFF?Text=Midnight',
     },
     {
       id: '3',
@@ -49,8 +51,8 @@ function AppContent() {
       artist: 'Synthwave Lab',
       album: 'Neon Streets',
       duration: 195.5,
-      url: 'https://example.com/audio/city_lights.mp3',
-      artwork: 'https://example.com/artwork/city.jpg',
+      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+      artwork: 'https://via.placeholder.com/150/00FF00/000000?Text=City',
     },
   ];
 
@@ -66,10 +68,19 @@ function AppContent() {
       setLastOperation(operation);
     });
 
-    // Cleanup listener on unmount (if needed)
+    TrackPlayer.onPlaybackStateChange((state, reason) => {
+      console.log('Playback state changed:', state, reason);
+      setPlaybackState(state);
+    });
+
+    TrackPlayer.onChangeTrack((track, reason) => {
+      console.log('Track changed:', track, reason);
+      setCurrentTrack(track);
+    });
+    TrackPlayer.onSeek((position, totalDuration) => {
+      console.log('Seek:', position, totalDuration);
+    });
     return () => {
-      // Note: You may need to implement a way to remove listeners
-      // depending on your implementation
     };
   }, []);
 
@@ -85,8 +96,8 @@ function AppContent() {
       artist: 'Unknown Artist',
       album: 'Unknown Album',
       duration: 180.0,
-      url: 'https://example.com/audio/new_track.mp3',
-      artwork: 'https://example.com/artwork/new.jpg',
+      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+      artwork: 'https://via.placeholder.com/150/FFFF00/000000?Text=New',
     };
     console.log('Adding track:', newTrack.id);
     PlayerQueue.loadSingleTrack(newTrack);
@@ -99,8 +110,8 @@ function AppContent() {
       artist: 'Unknown Artist',
       album: 'Unknown Album',
       duration: 200.0,
-      url: 'https://example.com/audio/indexed_track.mp3',
-      artwork: 'https://example.com/artwork/indexed.jpg',
+      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+      artwork: 'https://via.placeholder.com/150/00FFFF/000000?Text=Indexed',
     };
     console.log('Adding track at index 1:', newTrack.id);
     PlayerQueue.loadSingleTrack(newTrack, 1);
@@ -125,14 +136,54 @@ function AppContent() {
     setQueue(currentQueue);
   };
 
+  const handlePlay = () => TrackPlayer.play();
+  const handlePause = () => TrackPlayer.pause();
+  const handleSkipNext = () => TrackPlayer.skipToNext();
+  const handleSkipPrevious = () => TrackPlayer.skipToPrevious();
+  const handleSeekTo30 = () => TrackPlayer.seek(30);
+  const handleSeekTo60 = () => TrackPlayer.seek(60);
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>PlayerQueue Example</Text>
-        
+        <Text style={styles.title}>Nitro Player Example</Text>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Player Controls</Text>
+          <View style={styles.controlsRow}>
+            <TouchableOpacity style={styles.controlButton} onPress={handleSkipPrevious}>
+              <Text style={styles.buttonText}>Prev</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.controlButton} onPress={handlePlay}>
+              <Text style={styles.buttonText}>Play</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.controlButton} onPress={handlePause}>
+              <Text style={styles.buttonText}>Pause</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.controlButton} onPress={handleSkipNext}>
+              <Text style={styles.buttonText}>Next</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.controlsRow}>
+            <TouchableOpacity style={styles.controlButton} onPress={handleSeekTo30}>
+              <Text style={styles.buttonText}>Seek 30s</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.controlButton} onPress={handleSeekTo60}>
+              <Text style={styles.buttonText}>Seek 60s</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.statusText}>State: {playbackState !== undefined ? playbackState : 'None'}</Text>
+          {currentTrack && (
+            <View style={styles.currentTrack}>
+              <Text style={styles.currentTrackTitle}>Now Playing: {currentTrack.title}</Text>
+              <Text style={styles.currentTrackArtist}>{currentTrack.artist}</Text>
+            </View>
+          )}
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Queue Operations</Text>
-          
+
           <TouchableOpacity style={styles.button} onPress={handleLoadQueue}>
             <Text style={styles.buttonText}>Load Queue (3 tracks)</Text>
           </TouchableOpacity>
@@ -145,16 +196,16 @@ function AppContent() {
             <Text style={styles.buttonText}>Add Track at Index 1</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.button, queue.length === 0 && styles.buttonDisabled]} 
+          <TouchableOpacity
+            style={[styles.button, queue.length === 0 && styles.buttonDisabled]}
             onPress={handleDeleteTrack}
             disabled={queue.length === 0}
           >
             <Text style={styles.buttonText}>Delete First Track</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.button, queue.length === 0 && styles.buttonDisabled]} 
+          <TouchableOpacity
+            style={[styles.button, queue.length === 0 && styles.buttonDisabled]}
             onPress={handleClearQueue}
             disabled={queue.length === 0}
           >
@@ -290,6 +341,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 2,
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  controlButton: {
+    backgroundColor: '#007AFF',
+    padding: 10,
+    borderRadius: 5,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  statusText: {
+    textAlign: 'center',
+    marginBottom: 5,
+    fontWeight: 'bold',
+  },
+  currentTrack: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#eee',
+    borderRadius: 5,
+  },
+  currentTrackTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  currentTrackArtist: {
+    fontSize: 14,
+    color: '#666',
   },
 });
 

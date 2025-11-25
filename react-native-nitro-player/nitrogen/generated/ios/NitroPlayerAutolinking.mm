@@ -11,6 +11,7 @@
 #import <type_traits>
 
 #include "HybridPlayerQueueSpecSwift.hpp"
+#include "HybridTrackPlayerSpecSwift.hpp"
 
 @interface NitroPlayerAutolinking : NSObject
 @end
@@ -25,6 +26,13 @@
     "PlayerQueue",
     []() -> std::shared_ptr<HybridObject> {
       std::shared_ptr<HybridPlayerQueueSpec> hybridObject = NitroPlayer::NitroPlayerAutolinking::createPlayerQueue();
+      return hybridObject;
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "TrackPlayer",
+    []() -> std::shared_ptr<HybridObject> {
+      std::shared_ptr<HybridTrackPlayerSpec> hybridObject = NitroPlayer::NitroPlayerAutolinking::createTrackPlayer();
       return hybridObject;
     }
   );

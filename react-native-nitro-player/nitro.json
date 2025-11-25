@@ -16,6 +16,10 @@
     "PlayerQueue": {
       "swift": "HybridPlayerQueue",
       "kotlin": "HybridPlayerQueue"
+    },
+    "TrackPlayer": {
+      "swift": "HybridTrackPlayer",
+      "kotlin": "HybridTrackPlayer"
     }
   },
   "ignorePaths": [

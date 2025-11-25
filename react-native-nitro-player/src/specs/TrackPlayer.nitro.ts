@@ -1,5 +1,5 @@
 import type { HybridObject } from 'react-native-nitro-modules';
-import type { QueueOperation, TrackItem } from '../types/PlayerQueue';
+import type { QueueOperation, Reason, TrackItem, TrackPlayerState } from '../types/PlayerQueue';
 
 
 
@@ -17,9 +17,13 @@ export interface PlayerQueue extends HybridObject<{android: "kotlin" , ios: "swi
 
 
 
-// export interface TrackPlayerSpec extends HybridObject<{android: "kotlin" , ios: "swift"}> {
-//     play(): void;
-//     pause(): void;
-//     skip(): void;
-//     seek(position: number): void;
-// }
+export interface TrackPlayer extends HybridObject<{android: "kotlin" , ios: "swift"}> {
+    play(): void;
+    pause(): void;
+    skipToNext(): void;
+    skipToPrevious(): void;
+    seek(position: number): void;
+    onChangeTrack(callback: (track: TrackItem,reason?: Reason) => void): void;
+    onPlaybackStateChange(callback: (state: TrackPlayerState,reason?: Reason) => void): void;
+    onSeek(callback: (position: number,totalDuration: number) => void): void;
+}

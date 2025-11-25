@@ -10,15 +10,24 @@
 // Forward declarations of C++ defined types
 // Forward declaration of `HybridPlayerQueueSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
+// Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridTrackPlayerSpec; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
+// Forward declaration of `Reason` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
+// Forward declaration of `TrackPlayerState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
 // Include C++ defined types
 #include "HybridPlayerQueueSpec.hpp"
+#include "HybridTrackPlayerSpec.hpp"
 #include "QueueOperation.hpp"
+#include "Reason.hpp"
 #include "TrackItem.hpp"
+#include "TrackPlayerState.hpp"
 #include <NitroModules/Result.hpp>
 #include <exception>
 #include <functional>
@@ -39,6 +48,8 @@ namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declarations of Swift defined types
 // Forward declaration of `HybridPlayerQueueSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
+// Forward declaration of `HybridTrackPlayerSpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 
 // Include Swift defined types
 #if __has_include("NitroPlayer-Swift.h")

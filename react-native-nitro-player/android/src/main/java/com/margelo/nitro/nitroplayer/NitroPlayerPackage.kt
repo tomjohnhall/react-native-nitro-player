@@ -12,6 +12,7 @@ class NitroPlayerPackage : BaseReactPackage() {
 
     override fun getReactModuleInfoProvider(): ReactModuleInfoProvider = ReactModuleInfoProvider { HashMap() }
 
+
     companion object {
         init {
             NitroPlayerOnLoad.initializeNative()

@@ -9,6 +9,7 @@
 
 // Include C++ implementation defined types
 #include "HybridPlayerQueueSpecSwift.hpp"
+#include "HybridTrackPlayerSpecSwift.hpp"
 #include "NitroPlayer-Swift-Cxx-Umbrella.hpp"
 #include <NitroModules/NitroDefines.hpp>
 
@@ -35,6 +36,46 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     }
     #endif
     NitroPlayer::HybridPlayerQueueSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
+    return swiftPart.toUnsafe();
+  }
+  
+  // pragma MARK: std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>
+  Func_void_TrackItem_std__optional_Reason_ create_Func_void_TrackItem_std__optional_Reason_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_TrackItem_std__optional_Reason_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const TrackItem& track, std::optional<Reason> reason) mutable -> void {
+      swiftClosure.call(track, reason);
+    };
+  }
+  
+  // pragma MARK: std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>
+  Func_void_TrackPlayerState_std__optional_Reason_ create_Func_void_TrackPlayerState_std__optional_Reason_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_TrackPlayerState_std__optional_Reason_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](TrackPlayerState state, std::optional<Reason> reason) mutable -> void {
+      swiftClosure.call(static_cast<int>(state), reason);
+    };
+  }
+  
+  // pragma MARK: std::function<void(double /* position */, double /* totalDuration */)>
+  Func_void_double_double create_Func_void_double_double(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_double_double::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](double position, double totalDuration) mutable -> void {
+      swiftClosure.call(position, totalDuration);
+    };
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridTrackPlayerSpec>
+  std::shared_ptr<HybridTrackPlayerSpec> create_std__shared_ptr_HybridTrackPlayerSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
+    NitroPlayer::HybridTrackPlayerSpec_cxx swiftPart = NitroPlayer::HybridTrackPlayerSpec_cxx::fromUnsafe(swiftUnsafePointer);
+    return std::make_shared<margelo::nitro::nitroplayer::HybridTrackPlayerSpecSwift>(swiftPart);
+  }
+  void* NON_NULL get_std__shared_ptr_HybridTrackPlayerSpec_(std__shared_ptr_HybridTrackPlayerSpec_ cppType) {
+    std::shared_ptr<margelo::nitro::nitroplayer::HybridTrackPlayerSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::nitroplayer::HybridTrackPlayerSpecSwift>(cppType);
+    #ifdef NITRO_DEBUG
+    if (swiftWrapper == nullptr) [[unlikely]] {
+      throw std::runtime_error("Class \"HybridTrackPlayerSpec\" is not implemented in Swift!");
+    }
+    #endif
+    NitroPlayer::HybridTrackPlayerSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
     return swiftPart.toUnsafe();
   }
 

@@ -17,6 +17,10 @@
 
 #include "JHybridPlayerQueueSpec.hpp"
 #include "JFunc_void_std__vector_TrackItem__std__optional_QueueOperation_.hpp"
+#include "JHybridTrackPlayerSpec.hpp"
+#include "JFunc_void_TrackItem_std__optional_Reason_.hpp"
+#include "JFunc_void_TrackPlayerState_std__optional_Reason_.hpp"
+#include "JFunc_void_double_double.hpp"
 #include <NitroModules/DefaultConstructableObject.hpp>
 
 namespace margelo::nitro::nitroplayer {
@@ -30,12 +34,24 @@ int initialize(JavaVM* vm) {
     // Register native JNI methods
     margelo::nitro::nitroplayer::JHybridPlayerQueueSpec::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_std__vector_TrackItem__std__optional_QueueOperation__cxx::registerNatives();
+    margelo::nitro::nitroplayer::JHybridTrackPlayerSpec::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_TrackItem_std__optional_Reason__cxx::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_TrackPlayerState_std__optional_Reason__cxx::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_double_double_cxx::registerNatives();
 
     // Register Nitro Hybrid Objects
     HybridObjectRegistry::registerHybridObjectConstructor(
       "PlayerQueue",
       []() -> std::shared_ptr<HybridObject> {
         static DefaultConstructableObject<JHybridPlayerQueueSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridPlayerQueue");
+        auto instance = object.create();
+        return instance->cthis()->shared();
+      }
+    );
+    HybridObjectRegistry::registerHybridObjectConstructor(
+      "TrackPlayer",
+      []() -> std::shared_ptr<HybridObject> {
+        static DefaultConstructableObject<JHybridTrackPlayerSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridTrackPlayer");
         auto instance = object.create();
         return instance->cthis()->shared();
       }

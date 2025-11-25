@@ -129,6 +129,7 @@ repositories {
 }
 
 
+def media3_version = "1.3.0"
 dependencies {
   // For < 0.71, this will be from the local maven repo
   // For > 0.71, this will be replaced by `com.facebook.react:react-android:$version` by react gradle plugin
@@ -137,5 +138,9 @@ dependencies {
 
   // Add a dependency on NitroModules
   implementation project(":react-native-nitro-modules")
+
+  implementation "androidx.media3:media3-exoplayer:$media3_version"
+  implementation "androidx.media3:media3-session:$media3_version"
+  implementation "androidx.media3:media3-common:$media3_version"
 }
 

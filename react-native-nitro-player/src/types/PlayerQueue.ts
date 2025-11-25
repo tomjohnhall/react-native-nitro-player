@@ -10,3 +10,7 @@ export interface TrackItem {
 }
 
 export type QueueOperation = 'add' | 'remove' | 'clear';
+
+export type TrackPlayerState = 'playing' | 'paused' | 'stopped';
+
+export type Reason = 'user_action' | 'skip' | 'end' | 'error';
