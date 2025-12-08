@@ -55,4 +55,8 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     override fun onSeek(callback: (position: Double, totalDuration: Double) -> Unit) {
         core.onSeek = callback
     }
+
+    override fun onPlaybackProgressChange(callback: (position: Double, totalDuration: Double, isManuallySeeked: Boolean?) -> Unit) {
+        core.onPlaybackProgressChange = callback
+    }
 }

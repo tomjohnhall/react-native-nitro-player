@@ -16,10 +16,23 @@ class TrackPlayerCore private constructor(context: Context) {
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private lateinit var player: ExoPlayer
     private val queueManager = QueueManager.getInstance()
+    private var isManuallySeeked = false
+    private val progressUpdateRunnable = object : Runnable {
+        override fun run() {
+            if (::player.isInitialized && player.playbackState != Player.STATE_IDLE) {
+                val position = player.currentPosition / 1000.0
+                val duration = if (player.duration > 0) player.duration / 1000.0 else 0.0
+                onPlaybackProgressChange?.invoke(position, duration, if (isManuallySeeked) true else null)
+                isManuallySeeked = false
+            }
+            handler.postDelayed(this, 250) // Update every 250ms
+        }
+    }
 
     var onChangeTrack: ((TrackItem, Reason?) -> Unit)? = null
     var onPlaybackStateChange: ((TrackPlayerState, Reason?) -> Unit)? = null
     var onSeek: ((Double, Double) -> Unit)? = null
+    var onPlaybackProgressChange: ((Double, Double, Boolean?) -> Unit)? = null
 
     companion object {
         @Volatile
@@ -71,12 +84,15 @@ class TrackPlayerCore private constructor(context: Context) {
                     reason: Int
                 ) {
                     if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+                        isManuallySeeked = true
                         onSeek?.invoke(newPosition.positionMs / 1000.0, player.duration / 1000.0)
                     }
                 }
             })
 
             updatePlayerQueue(queueManager.getTracks())
+            // Start progress updates
+            handler.post(progressUpdateRunnable)
         }
 
         queueManager.addQueueChangeListener { tracks, _ ->
@@ -155,6 +171,7 @@ class TrackPlayerCore private constructor(context: Context) {
 
     fun seek(position: Double) {
         handler.post {
+            isManuallySeeked = true
             player.seekTo((position * 1000).toLong())
         }
     }

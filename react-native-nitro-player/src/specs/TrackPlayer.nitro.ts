@@ -26,4 +26,6 @@ export interface TrackPlayer extends HybridObject<{android: "kotlin" , ios: "swi
     onChangeTrack(callback: (track: TrackItem,reason?: Reason) => void): void;
     onPlaybackStateChange(callback: (state: TrackPlayerState,reason?: Reason) => void): void;
     onSeek(callback: (position: number,totalDuration: number) => void): void;
+    onPlaybackProgressChange(callback: (position: number,totalDuration: number, isManuallySeeked?:boolean) => void): void;
+
 }

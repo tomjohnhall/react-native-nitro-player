@@ -22,6 +22,7 @@ namespace margelo::nitro::nitroplayer {
       prototype.registerHybridMethod("onChangeTrack", &HybridTrackPlayerSpec::onChangeTrack);
       prototype.registerHybridMethod("onPlaybackStateChange", &HybridTrackPlayerSpec::onPlaybackStateChange);
       prototype.registerHybridMethod("onSeek", &HybridTrackPlayerSpec::onSeek);
+      prototype.registerHybridMethod("onPlaybackProgressChange", &HybridTrackPlayerSpec::onPlaybackProgressChange);
     });
   }
 

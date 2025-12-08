@@ -63,6 +63,14 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     };
   }
   
+  // pragma MARK: std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>
+  Func_void_double_double_std__optional_bool_ create_Func_void_double_double_std__optional_bool_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_double_double_std__optional_bool_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](double position, double totalDuration, std::optional<bool> isManuallySeeked) mutable -> void {
+      swiftClosure.call(position, totalDuration, isManuallySeeked);
+    };
+  }
+  
   // pragma MARK: std::shared_ptr<HybridTrackPlayerSpec>
   std::shared_ptr<HybridTrackPlayerSpec> create_std__shared_ptr_HybridTrackPlayerSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
     NitroPlayer::HybridTrackPlayerSpec_cxx swiftPart = NitroPlayer::HybridTrackPlayerSpec_cxx::fromUnsafe(swiftUnsafePointer);

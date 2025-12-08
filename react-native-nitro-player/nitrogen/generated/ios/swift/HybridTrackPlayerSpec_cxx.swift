@@ -231,4 +231,26 @@ open class HybridTrackPlayerSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
+  
+  @inline(__always)
+  public final func onPlaybackProgressChange(callback: bridge.Func_void_double_double_std__optional_bool_) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.onPlaybackProgressChange(callback: { () -> (Double, Double, Bool?) -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void_double_double_std__optional_bool_(callback)
+        return { (__position: Double, __totalDuration: Double, __isManuallySeeked: Bool?) -> Void in
+          __wrappedFunction.call(__position, __totalDuration, { () -> bridge.std__optional_bool_ in
+            if let __unwrappedValue = __isManuallySeeked {
+              return bridge.create_std__optional_bool_(__unwrappedValue)
+            } else {
+              return .init()
+            }
+          }())
+        }
+      }())
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
 }

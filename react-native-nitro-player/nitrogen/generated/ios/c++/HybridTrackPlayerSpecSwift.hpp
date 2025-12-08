@@ -118,6 +118,12 @@ namespace margelo::nitro::nitroplayer {
         std::rethrow_exception(__result.error());
       }
     }
+    inline void onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) override {
+      auto __result = _swiftPart.onPlaybackProgressChange(callback);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
 
   private:
     NitroPlayer::HybridTrackPlayerSpec_cxx _swiftPart;

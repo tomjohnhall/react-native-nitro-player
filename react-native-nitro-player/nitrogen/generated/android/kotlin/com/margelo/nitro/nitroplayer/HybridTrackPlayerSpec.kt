@@ -91,6 +91,15 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
     val __result = onSeek(callback)
     return __result
   }
+  
+  abstract fun onPlaybackProgressChange(callback: (position: Double, totalDuration: Double, isManuallySeeked: Boolean?) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onPlaybackProgressChange_cxx(callback: Func_void_double_double_std__optional_bool_): Unit {
+    val __result = onPlaybackProgressChange(callback)
+    return __result
+  }
 
   private external fun initHybrid(): HybridData
 

@@ -27,6 +27,7 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include "JFunc_void_TrackPlayerState_std__optional_Reason_.hpp"
 #include "JTrackPlayerState.hpp"
 #include "JFunc_void_double_double.hpp"
+#include "JFunc_void_double_double_std__optional_bool_.hpp"
 
 namespace margelo::nitro::nitroplayer {
 
@@ -91,6 +92,10 @@ namespace margelo::nitro::nitroplayer {
   void JHybridTrackPlayerSpec::onSeek(const std::function<void(double /* position */, double /* totalDuration */)>& callback) {
     static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_double_double::javaobject> /* callback */)>("onSeek_cxx");
     method(_javaPart, JFunc_void_double_double_cxx::fromCpp(callback));
+  }
+  void JHybridTrackPlayerSpec::onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_double_double_std__optional_bool_::javaobject> /* callback */)>("onPlaybackProgressChange_cxx");
+    method(_javaPart, JFunc_void_double_double_std__optional_bool__cxx::fromCpp(callback));
   }
 
 } // namespace margelo::nitro::nitroplayer

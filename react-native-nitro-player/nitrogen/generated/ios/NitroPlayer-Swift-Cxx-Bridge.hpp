@@ -222,6 +222,43 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Func_void_double_double_Wrapper(std::move(value));
   }
   
+  // pragma MARK: std::optional<bool>
+  /**
+   * Specialized version of `std::optional<bool>`.
+   */
+  using std__optional_bool_ = std::optional<bool>;
+  inline std::optional<bool> create_std__optional_bool_(const bool& value) noexcept {
+    return std::optional<bool>(value);
+  }
+  inline bool has_value_std__optional_bool_(const std::optional<bool>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline bool get_std__optional_bool_(const std::optional<bool>& optional) noexcept {
+    return *optional;
+  }
+  
+  // pragma MARK: std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>
+  /**
+   * Specialized version of `std::function<void(double, double, std::optional<bool>)>`.
+   */
+  using Func_void_double_double_std__optional_bool_ = std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>;
+  /**
+   * Wrapper class for a `std::function<void(double / * position * /, double / * totalDuration * /, std::optional<bool> / * isManuallySeeked * /)>`, this can be used from Swift.
+   */
+  class Func_void_double_double_std__optional_bool__Wrapper final {
+  public:
+    explicit Func_void_double_double_std__optional_bool__Wrapper(std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>&& func): _function(std::make_unique<std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>>(std::move(func))) {}
+    inline void call(double position, double totalDuration, std::optional<bool> isManuallySeeked) const noexcept {
+      _function->operator()(position, totalDuration, isManuallySeeked);
+    }
+  private:
+    std::unique_ptr<std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_double_double_std__optional_bool_ create_Func_void_double_double_std__optional_bool_(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_double_double_std__optional_bool__Wrapper wrap_Func_void_double_double_std__optional_bool_(Func_void_double_double_std__optional_bool_ value) noexcept {
+    return Func_void_double_double_std__optional_bool__Wrapper(std::move(value));
+  }
+  
   // pragma MARK: std::shared_ptr<HybridTrackPlayerSpec>
   /**
    * Specialized version of `std::shared_ptr<HybridTrackPlayerSpec>`.

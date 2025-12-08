@@ -65,6 +65,7 @@ namespace margelo::nitro::nitroplayer {
       virtual void onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) = 0;
       virtual void onPlaybackStateChange(const std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>& callback) = 0;
       virtual void onSeek(const std::function<void(double /* position */, double /* totalDuration */)>& callback) = 0;
+      virtual void onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) = 0;
 
     protected:
       // Hybrid Setup
