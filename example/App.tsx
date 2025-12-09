@@ -8,8 +8,15 @@
 import { NewAppScreen } from '@react-native/new-app-screen';
 import { useEffect, useState } from 'react';
 import { StatusBar, StyleSheet, useColorScheme, View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { PlayerQueue, TrackPlayer } from 'react-native-nitro-player';
-import type { TrackItem, QueueOperation, TrackPlayerState, Reason } from '../react-native-nitro-player/src/types/PlayerQueue';
+import { 
+  PlayerQueue, 
+  TrackPlayer,
+  useOnChangeTrack,
+  useOnPlaybackStateChange,
+  useOnSeek,
+  useOnPlaybackProgressChange
+} from 'react-native-nitro-player';
+import type { TrackItem, QueueOperation, TrackPlayerState, Reason, PlayerState, PlayerConfig } from '../react-native-nitro-player/src/types/PlayerQueue';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -22,8 +29,13 @@ function App() {
 function AppContent() {
   const [queue, setQueue] = useState<TrackItem[]>([]);
   const [lastOperation, setLastOperation] = useState<QueueOperation | undefined>(undefined);
-  const [playbackState, setPlaybackState] = useState<number | undefined>(undefined);
-  const [currentTrack, setCurrentTrack] = useState<TrackItem | undefined>(undefined);
+  const [playerState, setPlayerState] = useState<PlayerState | undefined>(undefined);
+
+  // Use hooks to get player state directly
+  const { track: currentTrack, reason: trackChangeReason } = useOnChangeTrack();
+  const { state: playbackState, reason: stateChangeReason } = useOnPlaybackStateChange();
+  const { position: lastSeekPosition, totalDuration: lastSeekDuration } = useOnSeek();
+  const { position: playbackPosition, totalDuration, isManuallySeeked } = useOnPlaybackProgressChange();
 
   // Sample tracks for demonstration
   const sampleTracks: TrackItem[] = [
@@ -56,7 +68,34 @@ function AppContent() {
     },
   ];
 
+  // Log changes for debugging
   useEffect(() => {
+    if (currentTrack) {
+      console.log('Track changed:', currentTrack, trackChangeReason);
+    }
+  }, [currentTrack, trackChangeReason]);
+
+  useEffect(() => {
+    if (playbackState !== undefined) {
+      console.log('Playback state changed:', playbackState, stateChangeReason);
+    }
+  }, [playbackState, stateChangeReason]);
+
+  useEffect(() => {
+    if (lastSeekPosition !== undefined) {
+      console.log('Seek:', lastSeekPosition, lastSeekDuration);
+    }
+  }, [lastSeekPosition, lastSeekDuration]);
+
+  useEffect(() => {
+    // Configure player for notifications and lock screen
+    TrackPlayer.configure({
+      androidAutoEnabled: false,
+      carPlayEnabled: false,
+      showInNotification: true,
+      showInLockScreen: true,
+    });
+
     // Get initial queue
     const initialQueue = PlayerQueue.getQueue();
     setQueue(initialQueue);
@@ -67,21 +106,6 @@ function AppContent() {
       setQueue(updatedQueue);
       setLastOperation(operation);
     });
-
-    TrackPlayer.onPlaybackStateChange((state, reason) => {
-      console.log('Playback state changed:', state, reason);
-      setPlaybackState(state);
-    });
-
-    TrackPlayer.onChangeTrack((track, reason) => {
-      console.log('Track changed:', track, reason);
-      setCurrentTrack(track);
-    });
-    TrackPlayer.onSeek((position, totalDuration) => {
-      console.log('Seek:', position, totalDuration);
-    });
-    return () => {
-    };
   }, []);
 
   const handleLoadQueue = () => {
@@ -142,6 +166,12 @@ function AppContent() {
   const handleSkipPrevious = () => TrackPlayer.skipToPrevious();
   const handleSeekTo30 = () => TrackPlayer.seek(30);
   const handleSeekTo60 = () => TrackPlayer.seek(60);
+  
+  const handleGetState = () => {
+    const state = TrackPlayer.getState();
+    console.log('Player State:', state);
+    setPlayerState(state);
+  };
 
   return (
     <View style={styles.container}>
@@ -171,12 +201,46 @@ function AppContent() {
             <TouchableOpacity style={styles.controlButton} onPress={handleSeekTo60}>
               <Text style={styles.buttonText}>Seek 60s</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.controlButton} onPress={handleGetState}>
+              <Text style={styles.buttonText}>Get State</Text>
+            </TouchableOpacity>
           </View>
           <Text style={styles.statusText}>State: {playbackState !== undefined ? playbackState : 'None'}</Text>
           {currentTrack && (
             <View style={styles.currentTrack}>
               <Text style={styles.currentTrackTitle}>Now Playing: {currentTrack.title}</Text>
               <Text style={styles.currentTrackArtist}>{currentTrack.artist}</Text>
+            </View>
+          )}
+          
+          <View style={styles.progressSection}>
+            <Text style={styles.progressLabel}>Playback Progress</Text>
+            <Text style={styles.progressText}>
+              {formatTime(playbackPosition)} / {formatTime(totalDuration)}
+            </Text>
+            {totalDuration > 0 && (
+              <View style={styles.progressBarContainer}>
+                <View 
+                  style={[
+                    styles.progressBar, 
+                    { width: `${(playbackPosition / totalDuration) * 100}%` }
+                  ]} 
+                />
+              </View>
+            )}
+            {isManuallySeeked !== undefined && (
+              <Text style={styles.seekIndicator}>
+                {isManuallySeeked ? '⏩ Manual Seek' : '▶️ Playing'}
+              </Text>
+            )}
+          </View>
+
+          {lastSeekPosition !== undefined && lastSeekDuration !== undefined && (
+            <View style={styles.seekInfo}>
+              <Text style={styles.seekLabel}>Last Seek Event:</Text>
+              <Text style={styles.seekText}>
+                Position: {formatTime(lastSeekPosition)} / Duration: {formatTime(lastSeekDuration)}
+              </Text>
             </View>
           )}
         </View>
@@ -227,6 +291,43 @@ function AppContent() {
             </Text>
           )}
         </View>
+
+        {playerState && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Player State (from getState())</Text>
+            <View style={styles.stateInfo}>
+              <Text style={styles.stateLabel}>Current State:</Text>
+              <Text style={styles.stateValue}>{playerState.currentState}</Text>
+            </View>
+            <View style={styles.stateInfo}>
+              <Text style={styles.stateLabel}>Current Position:</Text>
+              <Text style={styles.stateValue}>{formatTime(playerState.currentPosition)}</Text>
+            </View>
+            <View style={styles.stateInfo}>
+              <Text style={styles.stateLabel}>Total Duration:</Text>
+              <Text style={styles.stateValue}>{formatTime(playerState.totalDuration)}</Text>
+            </View>
+            <View style={styles.stateInfo}>
+              <Text style={styles.stateLabel}>Current Index:</Text>
+              <Text style={styles.stateValue}>
+                {playerState.currentIndex >= 0 ? playerState.currentIndex : 'None'}
+              </Text>
+            </View>
+            {playerState.currentTrack && (
+              <View style={styles.stateInfo}>
+                <Text style={styles.stateLabel}>Current Track:</Text>
+                <View style={styles.stateTrackInfo}>
+                  <Text style={styles.stateValue}>{playerState.currentTrack.title}</Text>
+                  <Text style={styles.stateSubValue}>{playerState.currentTrack.artist}</Text>
+                </View>
+              </View>
+            )}
+            <View style={styles.stateInfo}>
+              <Text style={styles.stateLabel}>Queue Length:</Text>
+              <Text style={styles.stateValue}>{playerState.queue.length} tracks</Text>
+            </View>
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Current Queue</Text>
@@ -373,6 +474,94 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  progressSection: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 5,
+  },
+  progressLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 5,
+  },
+  progressText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: '#ddd',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 5,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#007AFF',
+    borderRadius: 3,
+  },
+  seekIndicator: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 5,
+  },
+  seekInfo: {
+    marginTop: 10,
+    padding: 8,
+    backgroundColor: '#fff3cd',
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#ffc107',
+  },
+  seekLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#856404',
+    marginBottom: 3,
+  },
+  seekText: {
+    fontSize: 12,
+    color: '#856404',
+  },
+  stateInfo: {
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  stateLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 4,
+  },
+  stateValue: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  stateSubValue: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  stateTrackInfo: {
+    marginTop: 4,
+  },
 });
+
+// Helper function to format time
+function formatTime(seconds: number): string {
+  if (!isFinite(seconds) || seconds < 0) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
 
 export default App;

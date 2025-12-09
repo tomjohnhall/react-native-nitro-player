@@ -44,6 +44,12 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         core.seek(position)
     }
 
+    @DoNotStrip
+    @Keep
+    override fun getState(): PlayerState {
+        return core.getState()
+    }
+
     override fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit) {
         core.onChangeTrack = callback
     }
@@ -58,5 +64,16 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
 
     override fun onPlaybackProgressChange(callback: (position: Double, totalDuration: Double, isManuallySeeked: Boolean?) -> Unit) {
         core.onPlaybackProgressChange = callback
+    }
+
+    @DoNotStrip
+    @Keep
+    override fun configure(config: PlayerConfig) {
+        core.configure(
+            androidAutoEnabled = config.androidAutoEnabled,
+            carPlayEnabled = config.carPlayEnabled,
+            showInNotification = config.showInNotification,
+            showInLockScreen = config.showInLockScreen
+        )
     }
 }

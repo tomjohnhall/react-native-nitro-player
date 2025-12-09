@@ -5,3 +5,9 @@ import type { PlayerQueue as PlayerQueueType, TrackPlayer as TrackPlayerType } f
 
 export const PlayerQueue = NitroModules.createHybridObject<PlayerQueueType>('PlayerQueue');
 export const TrackPlayer = NitroModules.createHybridObject<TrackPlayerType>('TrackPlayer');
+
+// Export hooks
+export * from './hooks';
+
+// Export types
+export * from './types/PlayerQueue';

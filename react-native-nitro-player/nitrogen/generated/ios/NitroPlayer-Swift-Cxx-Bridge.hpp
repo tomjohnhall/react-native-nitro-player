@@ -12,6 +12,8 @@
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
 // Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridTrackPlayerSpec; }
+// Forward declaration of `PlayerState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 // Forward declaration of `Reason` to properly resolve imports.
@@ -30,16 +32,19 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 // Include C++ defined types
 #include "HybridPlayerQueueSpec.hpp"
 #include "HybridTrackPlayerSpec.hpp"
+#include "PlayerState.hpp"
 #include "QueueOperation.hpp"
 #include "Reason.hpp"
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
+#include <NitroModules/Null.hpp>
 #include <NitroModules/Result.hpp>
 #include <exception>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 /**
@@ -141,6 +146,65 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Result<std::vector<TrackItem>>::withError(error);
   }
   
+  // pragma MARK: std::variant<nitro::NullType, TrackItem>
+  /**
+   * Wrapper struct for `std::variant<nitro::NullType, TrackItem>`.
+   * std::variant cannot be used in Swift because of a Swift bug.
+   * Not even specializing it works. So we create a wrapper struct.
+   */
+  struct std__variant_nitro__NullType__TrackItem_ {
+    std::variant<nitro::NullType, TrackItem> variant;
+    std__variant_nitro__NullType__TrackItem_(std::variant<nitro::NullType, TrackItem> variant): variant(variant) { }
+    operator std::variant<nitro::NullType, TrackItem>() const noexcept {
+      return variant;
+    }
+    inline size_t index() const noexcept {
+      return variant.index();
+    }
+    inline nitro::NullType get_0() const noexcept {
+      return std::get<0>(variant);
+    }
+    inline TrackItem get_1() const noexcept {
+      return std::get<1>(variant);
+    }
+  };
+  inline std__variant_nitro__NullType__TrackItem_ create_std__variant_nitro__NullType__TrackItem_(nitro::NullType value) noexcept {
+    return std__variant_nitro__NullType__TrackItem_(value);
+  }
+  inline std__variant_nitro__NullType__TrackItem_ create_std__variant_nitro__NullType__TrackItem_(const TrackItem& value) noexcept {
+    return std__variant_nitro__NullType__TrackItem_(value);
+  }
+  
+  // pragma MARK: std::optional<std::variant<nitro::NullType, TrackItem>>
+  /**
+   * Specialized version of `std::optional<std::variant<nitro::NullType, TrackItem>>`.
+   */
+  using std__optional_std__variant_nitro__NullType__TrackItem__ = std::optional<std::variant<nitro::NullType, TrackItem>>;
+  inline std::optional<std::variant<nitro::NullType, TrackItem>> create_std__optional_std__variant_nitro__NullType__TrackItem__(const std::variant<nitro::NullType, TrackItem>& value) noexcept {
+    return std::optional<std::variant<nitro::NullType, TrackItem>>(value);
+  }
+  inline bool has_value_std__optional_std__variant_nitro__NullType__TrackItem__(const std::optional<std::variant<nitro::NullType, TrackItem>>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::variant<nitro::NullType, TrackItem> get_std__optional_std__variant_nitro__NullType__TrackItem__(const std::optional<std::variant<nitro::NullType, TrackItem>>& optional) noexcept {
+    return *optional;
+  }
+  
+  // pragma MARK: std::optional<bool>
+  /**
+   * Specialized version of `std::optional<bool>`.
+   */
+  using std__optional_bool_ = std::optional<bool>;
+  inline std::optional<bool> create_std__optional_bool_(const bool& value) noexcept {
+    return std::optional<bool>(value);
+  }
+  inline bool has_value_std__optional_bool_(const std::optional<bool>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline bool get_std__optional_bool_(const std::optional<bool>& optional) noexcept {
+    return *optional;
+  }
+  
   // pragma MARK: std::optional<Reason>
   /**
    * Specialized version of `std::optional<Reason>`.
@@ -222,21 +286,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Func_void_double_double_Wrapper(std::move(value));
   }
   
-  // pragma MARK: std::optional<bool>
-  /**
-   * Specialized version of `std::optional<bool>`.
-   */
-  using std__optional_bool_ = std::optional<bool>;
-  inline std::optional<bool> create_std__optional_bool_(const bool& value) noexcept {
-    return std::optional<bool>(value);
-  }
-  inline bool has_value_std__optional_bool_(const std::optional<bool>& optional) noexcept {
-    return optional.has_value();
-  }
-  inline bool get_std__optional_bool_(const std::optional<bool>& optional) noexcept {
-    return *optional;
-  }
-  
   // pragma MARK: std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>
   /**
    * Specialized version of `std::function<void(double, double, std::optional<bool>)>`.
@@ -270,5 +319,14 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   // pragma MARK: std::weak_ptr<HybridTrackPlayerSpec>
   using std__weak_ptr_HybridTrackPlayerSpec_ = std::weak_ptr<HybridTrackPlayerSpec>;
   inline std__weak_ptr_HybridTrackPlayerSpec_ weakify_std__shared_ptr_HybridTrackPlayerSpec_(const std::shared_ptr<HybridTrackPlayerSpec>& strong) noexcept { return strong; }
+  
+  // pragma MARK: Result<PlayerState>
+  using Result_PlayerState_ = Result<PlayerState>;
+  inline Result_PlayerState_ create_Result_PlayerState_(const PlayerState& value) noexcept {
+    return Result<PlayerState>::withValue(value);
+  }
+  inline Result_PlayerState_ create_Result_PlayerState_(const std::exception_ptr& error) noexcept {
+    return Result<PlayerState>::withError(error);
+  }
 
 } // namespace margelo::nitro::nitroplayer::bridge::swift

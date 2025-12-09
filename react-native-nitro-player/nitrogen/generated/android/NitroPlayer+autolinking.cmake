@@ -38,6 +38,7 @@ target_sources(
   # Android-specific Nitrogen C++ sources
   ../nitrogen/generated/android/c++/JHybridPlayerQueueSpec.cpp
   ../nitrogen/generated/android/c++/JHybridTrackPlayerSpec.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_TrackItem.cpp
 )
 
 # From node_modules/react-native/ReactAndroid/cmake-utils/folly-flags.cmake

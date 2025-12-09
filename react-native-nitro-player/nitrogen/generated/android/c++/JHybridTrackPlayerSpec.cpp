@@ -7,25 +7,38 @@
 
 #include "JHybridTrackPlayerSpec.hpp"
 
+// Forward declaration of `PlayerState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
-// Forward declaration of `Reason` to properly resolve imports.
-namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
+// Forward declaration of `PlayerConfig` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
+// Forward declaration of `Reason` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class Reason; }
 
+#include "PlayerState.hpp"
+#include "JPlayerState.hpp"
+#include <NitroModules/Null.hpp>
 #include "TrackItem.hpp"
-#include "Reason.hpp"
+#include <variant>
 #include <optional>
+#include "JVariant_NullType_TrackItem.hpp"
+#include <NitroModules/JNull.hpp>
+#include "JTrackItem.hpp"
+#include <string>
+#include "TrackPlayerState.hpp"
+#include "JTrackPlayerState.hpp"
+#include <vector>
+#include "PlayerConfig.hpp"
+#include "JPlayerConfig.hpp"
+#include "Reason.hpp"
 #include <functional>
 #include "JFunc_void_TrackItem_std__optional_Reason_.hpp"
 #include <NitroModules/JNICallable.hpp>
-#include "JTrackItem.hpp"
-#include <string>
 #include "JReason.hpp"
-#include "TrackPlayerState.hpp"
 #include "JFunc_void_TrackPlayerState_std__optional_Reason_.hpp"
-#include "JTrackPlayerState.hpp"
 #include "JFunc_void_double_double.hpp"
 #include "JFunc_void_double_double_std__optional_bool_.hpp"
 
@@ -80,6 +93,15 @@ namespace margelo::nitro::nitroplayer {
   void JHybridTrackPlayerSpec::seek(double position) {
     static const auto method = javaClassStatic()->getMethod<void(double /* position */)>("seek");
     method(_javaPart, position);
+  }
+  PlayerState JHybridTrackPlayerSpec::getState() {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPlayerState>()>("getState");
+    auto __result = method(_javaPart);
+    return __result->toCpp();
+  }
+  void JHybridTrackPlayerSpec::configure(const PlayerConfig& config) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JPlayerConfig> /* config */)>("configure");
+    method(_javaPart, JPlayerConfig::fromCpp(config));
   }
   void JHybridTrackPlayerSpec::onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) {
     static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_TrackItem_std__optional_Reason_::javaobject> /* callback */)>("onChangeTrack_cxx");

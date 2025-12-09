@@ -12,6 +12,10 @@
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
 // Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridTrackPlayerSpec; }
+// Forward declaration of `PlayerConfig` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
+// Forward declaration of `PlayerState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 // Forward declaration of `Reason` to properly resolve imports.
@@ -24,16 +28,20 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 // Include C++ defined types
 #include "HybridPlayerQueueSpec.hpp"
 #include "HybridTrackPlayerSpec.hpp"
+#include "PlayerConfig.hpp"
+#include "PlayerState.hpp"
 #include "QueueOperation.hpp"
 #include "Reason.hpp"
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
+#include <NitroModules/Null.hpp>
 #include <NitroModules/Result.hpp>
 #include <exception>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 // C++ helpers for Swift

@@ -13,6 +13,10 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
+// Forward declaration of `PlayerState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct PlayerState; }
+// Forward declaration of `PlayerConfig` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `Reason` to properly resolve imports.
@@ -20,6 +24,8 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
+#include "PlayerState.hpp"
+#include "PlayerConfig.hpp"
 #include "TrackItem.hpp"
 #include "Reason.hpp"
 #include <optional>
@@ -62,6 +68,8 @@ namespace margelo::nitro::nitroplayer {
       virtual void skipToNext() = 0;
       virtual void skipToPrevious() = 0;
       virtual void seek(double position) = 0;
+      virtual PlayerState getState() = 0;
+      virtual void configure(const PlayerConfig& config) = 0;
       virtual void onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) = 0;
       virtual void onPlaybackStateChange(const std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>& callback) = 0;
       virtual void onSeek(const std::function<void(double /* position */, double /* totalDuration */)>& callback) = 0;

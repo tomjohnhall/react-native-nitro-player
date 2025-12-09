@@ -12,19 +12,28 @@
 // Forward declaration of `HybridTrackPlayerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 
+// Forward declaration of `PlayerState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
-// Forward declaration of `Reason` to properly resolve imports.
-namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
+// Forward declaration of `PlayerConfig` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
+// Forward declaration of `Reason` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class Reason; }
 
+#include "PlayerState.hpp"
+#include <NitroModules/Null.hpp>
 #include "TrackItem.hpp"
-#include "Reason.hpp"
+#include <variant>
 #include <optional>
-#include <functional>
 #include <string>
 #include "TrackPlayerState.hpp"
+#include <vector>
+#include "PlayerConfig.hpp"
+#include "Reason.hpp"
+#include <functional>
 
 #include "NitroPlayer-Swift-Cxx-Umbrella.hpp"
 
@@ -96,6 +105,20 @@ namespace margelo::nitro::nitroplayer {
     }
     inline void seek(double position) override {
       auto __result = _swiftPart.seek(std::forward<decltype(position)>(position));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline PlayerState getState() override {
+      auto __result = _swiftPart.getState();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline void configure(const PlayerConfig& config) override {
+      auto __result = _swiftPart.configure(std::forward<decltype(config)>(config));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

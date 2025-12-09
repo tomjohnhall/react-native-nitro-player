@@ -65,6 +65,14 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   @Keep
   abstract fun seek(position: Double): Unit
   
+  @DoNotStrip
+  @Keep
+  abstract fun getState(): PlayerState
+  
+  @DoNotStrip
+  @Keep
+  abstract fun configure(config: PlayerConfig): Unit
+  
   abstract fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit): Unit
   
   @DoNotStrip
