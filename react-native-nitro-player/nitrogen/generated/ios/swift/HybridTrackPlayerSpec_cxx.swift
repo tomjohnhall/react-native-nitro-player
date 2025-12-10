@@ -278,25 +278,18 @@ open class HybridTrackPlayerSpec_cxx {
   }
   
   @inline(__always)
-  public final func setAudioOutput(output: Int32) -> bridge.Result_void_ {
+  public final func onAndroidAutoConnectionChange(callback: bridge.Func_void_bool) -> bridge.Result_void_ {
     do {
-      try self.__implementation.setAudioOutput(output: margelo.nitro.nitroplayer.AudioOutput(rawValue: output)!)
+      try self.__implementation.onAndroidAutoConnectionChange(callback: { () -> (Bool) -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void_bool(callback)
+        return { (__connected: Bool) -> Void in
+          __wrappedFunction.call(__connected)
+        }
+      }())
       return bridge.create_Result_void_()
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
       return bridge.create_Result_void_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
-  public final func getAudioOutput() -> bridge.Result_AudioOutput_ {
-    do {
-      let __result = try self.__implementation.getAudioOutput()
-      let __resultCpp = __result
-      return bridge.create_Result_AudioOutput_(__resultCpp)
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_AudioOutput_(__exceptionPtr)
     }
   }
   

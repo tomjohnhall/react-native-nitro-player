@@ -65,8 +65,7 @@ namespace margelo::nitro::nitroplayer {
     void onPlaybackStateChange(const std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>& callback) override;
     void onSeek(const std::function<void(double /* position */, double /* totalDuration */)>& callback) override;
     void onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) override;
-    void setAudioOutput(AudioOutput output) override;
-    AudioOutput getAudioOutput() override;
+    void onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) override;
     bool isAndroidAutoConnected() override;
 
   private:

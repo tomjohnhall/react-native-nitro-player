@@ -1,99 +1,79 @@
 package com.margelo.nitro.nitroplayer.media
 
-import android.app.PendingIntent
-import android.content.Intent
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
-import android.support.v4.media.session.MediaSessionCompat
-import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
+import com.margelo.nitro.nitroplayer.TrackItem
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 
 class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
-    private var mediaSession: MediaSessionCompat? = null
     
     companion object {
         private const val ROOT_ID = "root"
         private const val EMPTY_ROOT_ID = "empty_root"
         const val MEDIA_ID_QUEUE = "queue"
+        private const val PREFS_NAME = "NitroPlayerMediaService"
+        private const val KEY_QUEUE_JSON = "queue_json"
         
         var trackPlayerCore: TrackPlayerCore? = null
+        var mediaSessionManager: MediaSessionManager? = null
         var isAndroidAutoEnabled: Boolean = false
         var isAndroidAutoConnected: Boolean = false
+        
+        @Volatile
+        private var instance: NitroPlayerMediaBrowserService? = null
+        
+        fun getInstance(): NitroPlayerMediaBrowserService? = instance
     }
+
+    private lateinit var sharedPreferences: SharedPreferences
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var cachedQueue: List<TrackItem>? = null
 
     override fun onCreate() {
         super.onCreate()
         
-        // Create MediaSession with callbacks
-        mediaSession = MediaSessionCompat(this, "NitroPlayerMediaBrowserService").apply {
-            // Set session activity (opens the app when tapped)
-            val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        instance = this
+        sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        
+        // Use the existing MediaSession from MediaSessionManager
+        // This ensures the session is already connected to the ExoPlayer
+        try {
+            val session = mediaSessionManager?.mediaSession
+            if (session != null) {
+                // Convert Media3 MediaSession to MediaSessionCompat for MediaBrowserService
+                sessionToken = session.sessionCompatToken
+                println("🎵 NitroPlayerMediaBrowserService: MediaSession token set successfully")
+            } else {
+                println("⚠️ NitroPlayerMediaBrowserService: MediaSession not available yet")
             }
-            val pendingIntent = PendingIntent.getActivity(
-                this@NitroPlayerMediaBrowserService,
-                0,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            setSessionActivity(pendingIntent)
-            
-            // Set callback for handling media button events from Android Auto
-            setCallback(object : MediaSessionCompat.Callback() {
-                override fun onPlay() {
-                    trackPlayerCore?.play()
-                }
-                
-                override fun onPause() {
-                    trackPlayerCore?.pause()
-                }
-                
-                override fun onSkipToNext() {
-                    trackPlayerCore?.skipToNext()
-                }
-                
-                override fun onSkipToPrevious() {
-                    trackPlayerCore?.skipToPrevious()
-                }
-                
-                override fun onSeekTo(pos: Long) {
-                    trackPlayerCore?.seek((pos / 1000.0))
-                }
-                
-                override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
-                    mediaId?.toIntOrNull()?.let { index ->
-                        trackPlayerCore?.playFromIndex(index)
-                    }
-                }
-                
-                override fun onStop() {
-                    trackPlayerCore?.pause()
-                }
-            })
-            
-            // Set supported playback actions
-            setPlaybackState(
-                PlaybackStateCompat.Builder()
-                    .setActions(
-                        PlaybackStateCompat.ACTION_PLAY or
-                        PlaybackStateCompat.ACTION_PAUSE or
-                        PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-                        PlaybackStateCompat.ACTION_SEEK_TO or
-                        PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
-                    )
-                    .setState(PlaybackStateCompat.STATE_NONE, 0, 1.0f)
-                    .build()
-            )
-            
-            // Enable callbacks
-            isActive = true
+        } catch (e: Exception) {
+            println("❌ NitroPlayerMediaBrowserService: Error setting session token - ${e.message}")
+            e.printStackTrace()
         }
         
-        sessionToken = mediaSession?.sessionToken
+        // Load cached queue from SharedPreferences
+        loadQueueFromPreferences()
+        
+        println("🚀 NitroPlayerMediaBrowserService: Service created")
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        instance = null
+        serviceScope.cancel()
+        println("🛑 NitroPlayerMediaBrowserService: Service destroyed")
     }
 
     override fun onGetRoot(
@@ -101,18 +81,16 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         clientUid: Int,
         rootHints: Bundle?
     ): BrowserRoot? {
+        println("📂 NitroPlayerMediaBrowserService: onGetRoot called from $clientPackageName")
+        
         // Check if Android Auto is enabled
         if (!isAndroidAutoEnabled) {
+            println("⚠️ NitroPlayerMediaBrowserService: Android Auto not enabled")
             return BrowserRoot(EMPTY_ROOT_ID, null)
         }
         
-        // Detect Android Auto connection
-        isAndroidAutoConnected = rootHints?.getBoolean("android.media.browse.CONTENT_STYLE_SUPPORTED", false) == true
-        
-        // Notify the core that Android Auto is connected
-        trackPlayerCore?.onAndroidAutoConnectionChanged(isAndroidAutoConnected)
-        
         // Allow Android Auto and other media browsers to connect
+        println("✅ NitroPlayerMediaBrowserService: Allowing connection from $clientPackageName")
         return BrowserRoot(ROOT_ID, null)
     }
 
@@ -120,7 +98,10 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         parentId: String,
         result: Result<MutableList<MediaBrowserCompat.MediaItem>>
     ) {
+        println("📂 NitroPlayerMediaBrowserService: onLoadChildren called for parentId: $parentId")
+        
         if (!isAndroidAutoEnabled) {
+            println("⚠️ NitroPlayerMediaBrowserService: Android Auto not enabled, returning empty")
             result.sendResult(mutableListOf())
             return
         }
@@ -144,35 +125,49 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                     )
                 )
                 
+                println("✅ NitroPlayerMediaBrowserService: Returning root with ${mediaItems.size} items")
                 result.sendResult(mediaItems)
             }
             
             MEDIA_ID_QUEUE -> {
-                // Return all tracks in the queue
-                val core = trackPlayerCore
-                if (core != null) {
-                    val mediaItems = mutableListOf<MediaBrowserCompat.MediaItem>()
-                    val queue = core.getQueue()
-                    
-                    queue.forEachIndexed { index, track ->
-                        val description = MediaDescriptionCompat.Builder()
-                            .setMediaId(index.toString())
-                            .setTitle(track.title)
-                            .setSubtitle(track.artist)
-                            .setDescription(track.album)
-                            .build()
+                // Detach the result to load asynchronously
+                result.detach()
+                
+                serviceScope.launch {
+                    try {
+                        val queue = getQueue()
                         
-                        mediaItems.add(
-                            MediaBrowserCompat.MediaItem(
-                                description,
-                                MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
+                        if (queue.isEmpty()) {
+                            println("⚠️ NitroPlayerMediaBrowserService: Queue is empty, returning empty list")
+                            result.sendResult(mutableListOf())
+                            return@launch
+                        }
+                        
+                        val mediaItems = mutableListOf<MediaBrowserCompat.MediaItem>()
+                        
+                        queue.forEachIndexed { index, track ->
+                            val description = MediaDescriptionCompat.Builder()
+                                .setMediaId(index.toString())
+                                .setTitle(track.title)
+                                .setSubtitle(track.artist)
+                                .setDescription(track.album)
+                                .build()
+                            
+                            mediaItems.add(
+                                MediaBrowserCompat.MediaItem(
+                                    description,
+                                    MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
+                                )
                             )
-                        )
+                        }
+                        
+                        println("✅ NitroPlayerMediaBrowserService: Returning queue with ${mediaItems.size} items")
+                        result.sendResult(mediaItems)
+                    } catch (e: Exception) {
+                        println("❌ NitroPlayerMediaBrowserService: Error loading queue - ${e.message}")
+                        e.printStackTrace()
+                        result.sendResult(mutableListOf())
                     }
-                    
-                    result.sendResult(mediaItems)
-                } else {
-                    result.sendResult(mutableListOf())
                 }
             }
             
@@ -181,15 +176,123 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
             }
             
             else -> {
+                println("⚠️ NitroPlayerMediaBrowserService: Unknown parentId: $parentId")
                 result.sendResult(mutableListOf())
             }
         }
     }
-
-    override fun onDestroy() {
-        mediaSession?.release()
-        mediaSession = null
-        super.onDestroy()
+    
+    private suspend fun getQueue(): List<TrackItem> = withContext(Dispatchers.IO) {
+        println("📋 NitroPlayerMediaBrowserService: getQueue() called")
+        
+        // First try cached queue (fastest)
+        if (cachedQueue != null && cachedQueue!!.isNotEmpty()) {
+            println("📋 NitroPlayerMediaBrowserService: Using cached queue (${cachedQueue!!.size} items)")
+            return@withContext cachedQueue!!
+        }
+        
+        // Try to get from SharedPreferences
+        val savedQueue = loadQueueFromPreferences()
+        if (savedQueue.isNotEmpty()) {
+            cachedQueue = savedQueue
+            println("📋 NitroPlayerMediaBrowserService: Loaded queue from preferences (${savedQueue.size} items)")
+            return@withContext savedQueue
+        }
+        
+        // Last resort: try to get from the player
+        val core = trackPlayerCore
+        if (core != null) {
+            try {
+                val queue = core.getQueue()
+                if (queue.isNotEmpty()) {
+                    cachedQueue = queue
+                    saveQueueToPreferences(queue)
+                    println("📋 NitroPlayerMediaBrowserService: Got queue from player (${queue.size} items)")
+                    return@withContext queue
+                }
+            } catch (e: Exception) {
+                println("⚠️ NitroPlayerMediaBrowserService: Error getting queue from player - ${e.message}")
+            }
+        }
+        
+        println("⚠️ NitroPlayerMediaBrowserService: No queue found, returning empty list")
+        return@withContext emptyList()
     }
+    
+    private fun saveQueueToPreferences(queue: List<TrackItem>) {
+        try {
+            val jsonArray = JSONArray()
+            queue.forEach { track ->
+                val jsonObject = JSONObject().apply {
+                    put("id", track.id)
+                    put("title", track.title)
+                    put("artist", track.artist)
+                    put("album", track.album)
+                    put("duration", track.duration)
+                    put("url", track.url)
+                    track.artwork?.let { put("artwork", it) }
+                }
+                jsonArray.put(jsonObject)
+            }
+            
+            sharedPreferences.edit()
+                .putString(KEY_QUEUE_JSON, jsonArray.toString())
+                .apply()
+            
+            println("💾 NitroPlayerMediaBrowserService: Saved ${queue.size} tracks to preferences")
+        } catch (e: Exception) {
+            println("❌ NitroPlayerMediaBrowserService: Error saving queue - ${e.message}")
+            e.printStackTrace()
+        }
+    }
+    
+    private fun loadQueueFromPreferences(): List<TrackItem> {
+        try {
+            val jsonString = sharedPreferences.getString(KEY_QUEUE_JSON, null)
+            if (jsonString != null) {
+                val jsonArray = JSONArray(jsonString)
+                val queue = mutableListOf<TrackItem>()
+                
+                for (i in 0 until jsonArray.length()) {
+                    val jsonObject = jsonArray.getJSONObject(i)
+                    queue.add(
+                        TrackItem(
+                            id = jsonObject.getString("id"),
+                            title = jsonObject.getString("title"),
+                            artist = jsonObject.getString("artist"),
+                            album = jsonObject.getString("album"),
+                            duration = jsonObject.getDouble("duration"),
+                            url = jsonObject.getString("url"),
+                            artwork = jsonObject.optString("artwork", null)
+                        )
+                    )
+                }
+                
+                cachedQueue = queue
+                println("💾 NitroPlayerMediaBrowserService: Loaded ${queue.size} tracks from preferences")
+                return queue
+            }
+        } catch (e: Exception) {
+            println("❌ NitroPlayerMediaBrowserService: Error loading queue - ${e.message}")
+            e.printStackTrace()
+        }
+        
+        return emptyList()
+    }
+    
+    fun updateQueue(queue: List<TrackItem>) {
+        cachedQueue = queue
+        saveQueueToPreferences(queue)
+        println("🔄 NitroPlayerMediaBrowserService: Queue updated with ${queue.size} items")
+        
+        // Notify Android Auto that content has changed
+        try {
+            notifyChildrenChanged(MEDIA_ID_QUEUE)
+            println("📢 NitroPlayerMediaBrowserService: Notified Android Auto of queue update")
+        } catch (e: Exception) {
+            println("⚠️ NitroPlayerMediaBrowserService: Error notifying children changed: ${e.message}")
+        }
+    }
+
 }
 

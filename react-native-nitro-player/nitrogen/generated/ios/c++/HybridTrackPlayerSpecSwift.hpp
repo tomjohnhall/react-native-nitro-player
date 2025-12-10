@@ -22,8 +22,6 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
-// Forward declaration of `AudioOutput` to properly resolve imports.
-namespace margelo::nitro::nitroplayer { enum class AudioOutput; }
 
 #include "PlayerState.hpp"
 #include <NitroModules/Null.hpp>
@@ -36,7 +34,6 @@ namespace margelo::nitro::nitroplayer { enum class AudioOutput; }
 #include "PlayerConfig.hpp"
 #include "Reason.hpp"
 #include <functional>
-#include "AudioOutput.hpp"
 
 #include "NitroPlayer-Swift-Cxx-Umbrella.hpp"
 
@@ -150,19 +147,11 @@ namespace margelo::nitro::nitroplayer {
         std::rethrow_exception(__result.error());
       }
     }
-    inline void setAudioOutput(AudioOutput output) override {
-      auto __result = _swiftPart.setAudioOutput(static_cast<int>(output));
+    inline void onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) override {
+      auto __result = _swiftPart.onAndroidAutoConnectionChange(callback);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
-    }
-    inline AudioOutput getAudioOutput() override {
-      auto __result = _swiftPart.getAudioOutput();
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-      auto __value = std::move(__result.value());
-      return __value;
     }
     inline bool isAndroidAutoConnected() override {
       auto __result = _swiftPart.isAndroidAutoConnected();

@@ -13,8 +13,6 @@ namespace margelo::nitro::nitroplayer { struct PlayerState; }
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
-// Forward declaration of `AudioOutput` to properly resolve imports.
-namespace margelo::nitro::nitroplayer { enum class AudioOutput; }
 // Forward declaration of `PlayerConfig` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `Reason` to properly resolve imports.
@@ -33,8 +31,6 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include "TrackPlayerState.hpp"
 #include "JTrackPlayerState.hpp"
 #include <vector>
-#include "AudioOutput.hpp"
-#include "JAudioOutput.hpp"
 #include "PlayerConfig.hpp"
 #include "JPlayerConfig.hpp"
 #include "Reason.hpp"
@@ -45,6 +41,7 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include "JFunc_void_TrackPlayerState_std__optional_Reason_.hpp"
 #include "JFunc_void_double_double.hpp"
 #include "JFunc_void_double_double_std__optional_bool_.hpp"
+#include "JFunc_void_bool.hpp"
 
 namespace margelo::nitro::nitroplayer {
 
@@ -123,14 +120,9 @@ namespace margelo::nitro::nitroplayer {
     static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_double_double_std__optional_bool_::javaobject> /* callback */)>("onPlaybackProgressChange_cxx");
     method(_javaPart, JFunc_void_double_double_std__optional_bool__cxx::fromCpp(callback));
   }
-  void JHybridTrackPlayerSpec::setAudioOutput(AudioOutput output) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JAudioOutput> /* output */)>("setAudioOutput");
-    method(_javaPart, JAudioOutput::fromCpp(output));
-  }
-  AudioOutput JHybridTrackPlayerSpec::getAudioOutput() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JAudioOutput>()>("getAudioOutput");
-    auto __result = method(_javaPart);
-    return __result->toCpp();
+  void JHybridTrackPlayerSpec::onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_bool::javaobject> /* callback */)>("onAndroidAutoConnectionChange_cxx");
+    method(_javaPart, JFunc_void_bool_cxx::fromCpp(callback));
   }
   bool JHybridTrackPlayerSpec::isAndroidAutoConnected() {
     static const auto method = javaClassStatic()->getMethod<jboolean()>("isAndroidAutoConnected");

@@ -77,13 +77,8 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     }
     
     @Keep
-    override fun setAudioOutput(output: AudioOutput) {
-        core.setAudioOutput(output)
-    }
-    
-    @Keep
-    override fun getAudioOutput(): AudioOutput {
-        return core.getAudioOutput()
+    override fun onAndroidAutoConnectionChange(callback: (Boolean) -> Unit) {
+        core.onAndroidAutoConnectionChange = callback
     }
     
     @Keep

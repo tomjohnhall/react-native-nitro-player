@@ -15,8 +15,13 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.queue.QueueManager
+import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,7 +34,8 @@ class MediaSessionManager(
     private val player: ExoPlayer,
     private val queueManager: QueueManager
 ) {
-    private var mediaSession: MediaSession? = null
+    var mediaSession: MediaSession? = null  // Make public so MediaBrowserService can access it
+        private set
     private var notificationManager: NotificationManager? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val artworkCache = mutableMapOf<String, Bitmap>()
@@ -73,6 +79,23 @@ class MediaSessionManager(
     private fun setupMediaSession() {
         try {
             mediaSession = MediaSession.Builder(context, player)
+                .setCallback(object : MediaSession.Callback {
+                    override fun onConnect(
+                        session: MediaSession,
+                        controller: MediaSession.ControllerInfo
+                    ): MediaSession.ConnectionResult {
+                        // Accept all connections with default commands
+                        // Media3 automatically handles play, pause, skip, etc. through the player
+                        return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                            .setAvailableSessionCommands(
+                                MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS
+                            )
+                            .setAvailablePlayerCommands(
+                                MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
+                            )
+                            .build()
+                    }
+                })
                 .build()
             // MediaSession is active by default in Media3
             updateMediaSessionMetadata()

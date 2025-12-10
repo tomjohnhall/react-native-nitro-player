@@ -109,13 +109,14 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
     return __result
   }
   
-  @DoNotStrip
-  @Keep
-  abstract fun setAudioOutput(output: AudioOutput): Unit
+  abstract fun onAndroidAutoConnectionChange(callback: (connected: Boolean) -> Unit): Unit
   
   @DoNotStrip
   @Keep
-  abstract fun getAudioOutput(): AudioOutput
+  private fun onAndroidAutoConnectionChange_cxx(callback: Func_void_bool): Unit {
+    val __result = onAndroidAutoConnectionChange(callback)
+    return __result
+  }
   
   @DoNotStrip
   @Keep

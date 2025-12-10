@@ -6,10 +6,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import android.media.AudioManager
-import com.margelo.nitro.nitroplayer.AudioOutput
 import com.margelo.nitro.nitroplayer.NitroPlayerPackage
 import com.margelo.nitro.nitroplayer.PlayerState
+import com.margelo.nitro.nitroplayer.connection.AndroidAutoConnectionDetector
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.TrackPlayerState
@@ -26,9 +25,9 @@ class TrackPlayerCore private constructor(private val context: Context) {
     private val queueManager = QueueManager.getInstance()
     private var mediaSessionManager: MediaSessionManager? = null
     private var isManuallySeeked = false
-    private var audioOutput: AudioOutput = AudioOutput.AUTO
-    private var audioManager: AudioManager? = null
     private var isAndroidAutoConnected: Boolean = false
+    private var androidAutoConnectionDetector: AndroidAutoConnectionDetector? = null
+    var onAndroidAutoConnectionChange: ((Boolean) -> Unit)? = null
     private val progressUpdateRunnable = object : Runnable {
         override fun run() {
             if (::player.isInitialized && player.playbackState != Player.STATE_IDLE) {
@@ -60,11 +59,27 @@ class TrackPlayerCore private constructor(private val context: Context) {
     init {
         handler.post {
             player = ExoPlayer.Builder(context).build()
-            audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             mediaSessionManager = MediaSessionManager(context, player, queueManager)
             
-            // Set reference for MediaBrowserService
+            // Set references for MediaBrowserService
             NitroPlayerMediaBrowserService.trackPlayerCore = this
+            NitroPlayerMediaBrowserService.mediaSessionManager = mediaSessionManager
+            
+            // Initialize Android Auto connection detector
+            androidAutoConnectionDetector = AndroidAutoConnectionDetector(context).apply {
+                onConnectionChanged = { connected, connectionType ->
+                    handler.post {
+                        isAndroidAutoConnected = connected
+                        NitroPlayerMediaBrowserService.isAndroidAutoConnected = connected
+                        
+                        // Notify JavaScript
+                        onAndroidAutoConnectionChange?.invoke(connected)
+                        
+                        println("🚗 Android Auto connection changed: connected=$connected, type=$connectionType")
+                    }
+                }
+                registerCarConnectionReceiver()
+            }
             
             player.addListener(object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -307,39 +322,6 @@ class TrackPlayerCore private constructor(private val context: Context) {
         }
     }
     
-    fun setAudioOutput(output: AudioOutput) {
-        handler.post {
-            audioOutput = output
-            applyAudioRouting()
-        }
-    }
-    
-    fun getAudioOutput(): AudioOutput {
-        return audioOutput
-    }
-    
-    private fun applyAudioRouting() {
-        if (!::player.isInitialized) return
-        
-        when (audioOutput) {
-            AudioOutput.PHONE -> {
-                // Force audio to phone speaker/earpiece
-                audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
-                audioManager?.isSpeakerphoneOn = true
-            }
-            AudioOutput.CAR -> {
-                // Force audio to car (Bluetooth/Android Auto)
-                audioManager?.mode = AudioManager.MODE_NORMAL
-                audioManager?.isSpeakerphoneOn = false
-            }
-            AudioOutput.AUTO -> {
-                // Let system decide based on connected devices
-                audioManager?.mode = AudioManager.MODE_NORMAL
-                audioManager?.isSpeakerphoneOn = false
-            }
-        }
-    }
-    
     // Public method to get queue for MediaBrowserService
     fun getQueue(): List<TrackItem> {
         return queueManager.getTracks()
@@ -352,15 +334,11 @@ class TrackPlayerCore private constructor(private val context: Context) {
         return findTrack(currentMediaItem)
     }
     
-    // Public method to handle Android Auto connection changes
-    fun onAndroidAutoConnectionChanged(connected: Boolean) {
+    // Clean up resources
+    fun destroy() {
         handler.post {
-            isAndroidAutoConnected = connected
-            
-            // Automatically switch audio output when Android Auto connects/disconnects
-            if (connected && audioOutput == AudioOutput.AUTO) {
-                applyAudioRouting()
-            }
+            androidAutoConnectionDetector?.unregisterCarConnectionReceiver()
+            handler.removeCallbacks(progressUpdateRunnable)
         }
     }
     

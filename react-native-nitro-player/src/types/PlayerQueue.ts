@@ -29,5 +29,3 @@ export interface PlayerConfig {
     carPlayEnabled?: boolean;
     showInNotification?: boolean;
 }
-
-export type AudioOutput = 'PHONE' | 'CAR' | 'AUTO';

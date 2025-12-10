@@ -55,6 +55,15 @@ class QueueManager private constructor() {
     fun loadQueue(tracks: Array<TrackItem>) {
         queue.loadTracks(tracks.toList())
         notifyListeners(QueueOperation.ADD)
+        
+        // Update MediaBrowserService cache immediately
+        try {
+            val service = com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService.getInstance()
+            service?.updateQueue(queue.getTracks())
+            println("📋 QueueManager: Updated MediaBrowserService cache with ${queue.getTracks().size} tracks")
+        } catch (e: Exception) {
+            println("⚠️ QueueManager: Error updating MediaBrowserService cache: ${e.message}")
+        }
     }
     
     /**
@@ -68,6 +77,14 @@ class QueueManager private constructor() {
             queue.addTrack(track)
         }
         notifyListeners(QueueOperation.ADD)
+        
+        // Update MediaBrowserService cache
+        try {
+            val service = com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService.getInstance()
+            service?.updateQueue(queue.getTracks())
+        } catch (e: Exception) {
+            println("⚠️ QueueManager: Error updating MediaBrowserService cache: ${e.message}")
+        }
     }
     
     /**

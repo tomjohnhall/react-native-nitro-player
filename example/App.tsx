@@ -14,9 +14,10 @@ import {
   useOnChangeTrack,
   useOnPlaybackStateChange,
   useOnSeek,
-  useOnPlaybackProgressChange
+  useOnPlaybackProgressChange,
+  useAndroidAutoConnection
 } from 'react-native-nitro-player';
-import type { TrackItem, QueueOperation, TrackPlayerState, Reason, PlayerState, PlayerConfig, AudioOutput } from '../react-native-nitro-player/src/types/PlayerQueue';
+import type { TrackItem, QueueOperation, TrackPlayerState, Reason, PlayerState, PlayerConfig } from '../react-native-nitro-player/src/types/PlayerQueue';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -33,49 +34,53 @@ TrackPlayer.configure({
 });
 
 
+
+const sampleTracks: TrackItem[] = [
+  {
+    id: '1',
+    title: 'Sunset Drive',
+    artist: 'Lofi Beats',
+    album: 'Chill Vibes',
+    duration: 182.0,
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    artwork: 'https://img.freepik.com/free-photo/sunset-time-tropical-beach-sea-with-coconut-palm-tree_74190-1075.jpg?semt=ais_hybrid&w=740&q=80',
+  },
+  {
+    id: '2',
+    title: 'Midnight Rain',
+    artist: 'Nightfall',
+    album: 'Dreamscapes',
+    duration: 204.0,
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    artwork: 'https://via.placeholder.com/150/FF0000/FFFFFF?Text=Midnight',
+  },
+  {
+    id: '3',
+    title: 'City Lights',
+    artist: 'Synthwave Lab',
+    album: 'Neon Streets',
+    duration: 195.5,
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    artwork: 'https://via.placeholder.com/150/00FF00/000000?Text=City',
+  },
+];
+
+PlayerQueue.loadQueue(sampleTracks);
+
 function AppContent() {
   const [queue, setQueue] = useState<TrackItem[]>([]);
   const [lastOperation, setLastOperation] = useState<QueueOperation | undefined>(undefined);
   const [playerState, setPlayerState] = useState<PlayerState | undefined>(undefined);
-  const [audioOutput, setAudioOutput] = useState<AudioOutput>('AUTO');
-  const [isAndroidAutoConnected, setIsAndroidAutoConnected] = useState<boolean>(false);
 
   // Use hooks to get player state directly
   const { track: currentTrack, reason: trackChangeReason } = useOnChangeTrack();
   const { state: playbackState, reason: stateChangeReason } = useOnPlaybackStateChange();
   const { position: lastSeekPosition, totalDuration: lastSeekDuration } = useOnSeek();
   const { position: playbackPosition, totalDuration, isManuallySeeked } = useOnPlaybackProgressChange();
+  const { isConnected: isAndroidAutoConnected } = useAndroidAutoConnection();
 
   // Sample tracks for demonstration
-  const sampleTracks: TrackItem[] = [
-    {
-      id: '1',
-      title: 'Sunset Drive',
-      artist: 'Lofi Beats',
-      album: 'Chill Vibes',
-      duration: 182.0,
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-      artwork: 'https://img.freepik.com/free-photo/sunset-time-tropical-beach-sea-with-coconut-palm-tree_74190-1075.jpg?semt=ais_hybrid&w=740&q=80',
-    },
-    {
-      id: '2',
-      title: 'Midnight Rain',
-      artist: 'Nightfall',
-      album: 'Dreamscapes',
-      duration: 204.0,
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-      artwork: 'https://via.placeholder.com/150/FF0000/FFFFFF?Text=Midnight',
-    },
-    {
-      id: '3',
-      title: 'City Lights',
-      artist: 'Synthwave Lab',
-      album: 'Neon Streets',
-      duration: 195.5,
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-      artwork: 'https://via.placeholder.com/150/00FF00/000000?Text=City',
-    },
-  ];
+
 
   // Log changes for debugging
   useEffect(() => {
@@ -109,14 +114,6 @@ function AppContent() {
       setQueue(updatedQueue);
       setLastOperation(operation);
     });
-    
-    // Check Android Auto connection periodically
-    const checkAndroidAuto = setInterval(() => {
-      const connected = TrackPlayer.isAndroidAutoConnected();
-      setIsAndroidAutoConnected(connected);
-    }, 1000);
-    
-    return () => clearInterval(checkAndroidAuto);
   }, []);
 
   const handleLoadQueue = () => {
@@ -228,40 +225,8 @@ function AppContent() {
           {/* Android Auto Connection Indicator */}
           <View style={[styles.connectionIndicator, isAndroidAutoConnected && styles.connectionIndicatorConnected]}>
             <Text style={styles.connectionText}>
-              Android Auto: {isAndroidAutoConnected ? '🚗 CONNECTED' : '📱 Disconnected'}
+              {isAndroidAutoConnected ? '🚗 Playing on Car' : '📱 Playing on Phone'}
             </Text>
-          </View>
-          
-          {/* Audio Output Controls */}
-          <View style={styles.audioOutputSection}>
-            <Text style={styles.sectionTitle}>Audio Output</Text>
-            <Text style={styles.statusText}>Current: {audioOutput}</Text>
-            <View style={styles.controlsRow}>
-              <TouchableOpacity 
-                style={[styles.controlButton, audioOutput === 'AUTO' && styles.activeButton]} 
-                onPress={() => {
-                  TrackPlayer.setAudioOutput('AUTO');
-                  setAudioOutput('AUTO');
-                }}>
-                <Text style={styles.buttonText}>AUTO</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.controlButton, audioOutput === 'PHONE' && styles.activeButton]} 
-                onPress={() => {
-                  TrackPlayer.setAudioOutput('PHONE');
-                  setAudioOutput('PHONE');
-                }}>
-                <Text style={styles.buttonText}>PHONE</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.controlButton, audioOutput === 'CAR' && styles.activeButton]} 
-                onPress={() => {
-                  TrackPlayer.setAudioOutput('CAR');
-                  setAudioOutput('CAR');
-                }}>
-                <Text style={styles.buttonText}>CAR</Text>
-              </TouchableOpacity>
-            </View>
           </View>
           <Text style={styles.statusText}>State: {playbackState !== undefined ? playbackState : 'None'}</Text>
           {currentTrack && (
@@ -512,15 +477,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     minWidth: 60,
     alignItems: 'center',
-  },
-  activeButton: {
-    backgroundColor: '#34C759',
-  },
-  audioOutputSection: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 5,
   },
   connectionIndicator: {
     padding: 8,
