@@ -14,6 +14,8 @@ namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
 namespace margelo::nitro::nitroplayer { class HybridTrackPlayerSpec; }
 // Forward declaration of `PlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct PlayerState; }
+// Forward declaration of `Playlist` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct Playlist; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 // Forward declaration of `Reason` to properly resolve imports.
@@ -33,6 +35,7 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 #include "HybridPlayerQueueSpec.hpp"
 #include "HybridTrackPlayerSpec.hpp"
 #include "PlayerState.hpp"
+#include "Playlist.hpp"
 #include "QueueOperation.hpp"
 #include "Reason.hpp"
 #include "TrackItem.hpp"
@@ -53,6 +56,65 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
  */
 namespace margelo::nitro::nitroplayer::bridge::swift {
 
+  // pragma MARK: std::optional<std::string>
+  /**
+   * Specialized version of `std::optional<std::string>`.
+   */
+  using std__optional_std__string_ = std::optional<std::string>;
+  inline std::optional<std::string> create_std__optional_std__string_(const std::string& value) noexcept {
+    return std::optional<std::string>(value);
+  }
+  inline bool has_value_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::string get_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
+    return *optional;
+  }
+  
+  // pragma MARK: std::variant<nitro::NullType, std::string>
+  /**
+   * Wrapper struct for `std::variant<nitro::NullType, std::string>`.
+   * std::variant cannot be used in Swift because of a Swift bug.
+   * Not even specializing it works. So we create a wrapper struct.
+   */
+  struct std__variant_nitro__NullType__std__string_ {
+    std::variant<nitro::NullType, std::string> variant;
+    std__variant_nitro__NullType__std__string_(std::variant<nitro::NullType, std::string> variant): variant(variant) { }
+    operator std::variant<nitro::NullType, std::string>() const noexcept {
+      return variant;
+    }
+    inline size_t index() const noexcept {
+      return variant.index();
+    }
+    inline nitro::NullType get_0() const noexcept {
+      return std::get<0>(variant);
+    }
+    inline std::string get_1() const noexcept {
+      return std::get<1>(variant);
+    }
+  };
+  inline std__variant_nitro__NullType__std__string_ create_std__variant_nitro__NullType__std__string_(nitro::NullType value) noexcept {
+    return std__variant_nitro__NullType__std__string_(value);
+  }
+  inline std__variant_nitro__NullType__std__string_ create_std__variant_nitro__NullType__std__string_(const std::string& value) noexcept {
+    return std__variant_nitro__NullType__std__string_(value);
+  }
+  
+  // pragma MARK: std::optional<std::variant<nitro::NullType, std::string>>
+  /**
+   * Specialized version of `std::optional<std::variant<nitro::NullType, std::string>>`.
+   */
+  using std__optional_std__variant_nitro__NullType__std__string__ = std::optional<std::variant<nitro::NullType, std::string>>;
+  inline std::optional<std::variant<nitro::NullType, std::string>> create_std__optional_std__variant_nitro__NullType__std__string__(const std::variant<nitro::NullType, std::string>& value) noexcept {
+    return std::optional<std::variant<nitro::NullType, std::string>>(value);
+  }
+  inline bool has_value_std__optional_std__variant_nitro__NullType__std__string__(const std::optional<std::variant<nitro::NullType, std::string>>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::variant<nitro::NullType, std::string> get_std__optional_std__variant_nitro__NullType__std__string__(const std::optional<std::variant<nitro::NullType, std::string>>& optional) noexcept {
+    return *optional;
+  }
+  
   // pragma MARK: std::vector<TrackItem>
   /**
    * Specialized version of `std::vector<TrackItem>`.
@@ -60,6 +122,46 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   using std__vector_TrackItem_ = std::vector<TrackItem>;
   inline std::vector<TrackItem> create_std__vector_TrackItem_(size_t size) noexcept {
     std::vector<TrackItem> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::variant<nitro::NullType, Playlist>
+  /**
+   * Wrapper struct for `std::variant<nitro::NullType, Playlist>`.
+   * std::variant cannot be used in Swift because of a Swift bug.
+   * Not even specializing it works. So we create a wrapper struct.
+   */
+  struct std__variant_nitro__NullType__Playlist_ {
+    std::variant<nitro::NullType, Playlist> variant;
+    std__variant_nitro__NullType__Playlist_(std::variant<nitro::NullType, Playlist> variant): variant(variant) { }
+    operator std::variant<nitro::NullType, Playlist>() const noexcept {
+      return variant;
+    }
+    inline size_t index() const noexcept {
+      return variant.index();
+    }
+    inline nitro::NullType get_0() const noexcept {
+      return std::get<0>(variant);
+    }
+    inline Playlist get_1() const noexcept {
+      return std::get<1>(variant);
+    }
+  };
+  inline std__variant_nitro__NullType__Playlist_ create_std__variant_nitro__NullType__Playlist_(nitro::NullType value) noexcept {
+    return std__variant_nitro__NullType__Playlist_(value);
+  }
+  inline std__variant_nitro__NullType__Playlist_ create_std__variant_nitro__NullType__Playlist_(const Playlist& value) noexcept {
+    return std__variant_nitro__NullType__Playlist_(value);
+  }
+  
+  // pragma MARK: std::vector<Playlist>
+  /**
+   * Specialized version of `std::vector<Playlist>`.
+   */
+  using std__vector_Playlist_ = std::vector<Playlist>;
+  inline std::vector<Playlist> create_std__vector_Playlist_(size_t size) noexcept {
+    std::vector<Playlist> vector;
     vector.reserve(size);
     return vector;
   }
@@ -94,26 +196,48 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return *optional;
   }
   
-  // pragma MARK: std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>
+  // pragma MARK: std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>
   /**
-   * Specialized version of `std::function<void(const std::vector<TrackItem>&, std::optional<QueueOperation>)>`.
+   * Specialized version of `std::function<void(const std::vector<Playlist>&, std::optional<QueueOperation>)>`.
    */
-  using Func_void_std__vector_TrackItem__std__optional_QueueOperation_ = std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>;
+  using Func_void_std__vector_Playlist__std__optional_QueueOperation_ = std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>;
   /**
-   * Wrapper class for a `std::function<void(const std::vector<TrackItem>& / * queue * /, std::optional<QueueOperation> / * operation * /)>`, this can be used from Swift.
+   * Wrapper class for a `std::function<void(const std::vector<Playlist>& / * playlists * /, std::optional<QueueOperation> / * operation * /)>`, this can be used from Swift.
    */
-  class Func_void_std__vector_TrackItem__std__optional_QueueOperation__Wrapper final {
+  class Func_void_std__vector_Playlist__std__optional_QueueOperation__Wrapper final {
   public:
-    explicit Func_void_std__vector_TrackItem__std__optional_QueueOperation__Wrapper(std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>&& func): _function(std::make_unique<std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>>(std::move(func))) {}
-    inline void call(std::vector<TrackItem> queue, std::optional<QueueOperation> operation) const noexcept {
-      _function->operator()(queue, operation);
+    explicit Func_void_std__vector_Playlist__std__optional_QueueOperation__Wrapper(std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>&& func): _function(std::make_unique<std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>>(std::move(func))) {}
+    inline void call(std::vector<Playlist> playlists, std::optional<QueueOperation> operation) const noexcept {
+      _function->operator()(playlists, operation);
     }
   private:
-    std::unique_ptr<std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>> _function;
+    std::unique_ptr<std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>> _function;
   } SWIFT_NONCOPYABLE;
-  Func_void_std__vector_TrackItem__std__optional_QueueOperation_ create_Func_void_std__vector_TrackItem__std__optional_QueueOperation_(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_std__vector_TrackItem__std__optional_QueueOperation__Wrapper wrap_Func_void_std__vector_TrackItem__std__optional_QueueOperation_(Func_void_std__vector_TrackItem__std__optional_QueueOperation_ value) noexcept {
-    return Func_void_std__vector_TrackItem__std__optional_QueueOperation__Wrapper(std::move(value));
+  Func_void_std__vector_Playlist__std__optional_QueueOperation_ create_Func_void_std__vector_Playlist__std__optional_QueueOperation_(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__vector_Playlist__std__optional_QueueOperation__Wrapper wrap_Func_void_std__vector_Playlist__std__optional_QueueOperation_(Func_void_std__vector_Playlist__std__optional_QueueOperation_ value) noexcept {
+    return Func_void_std__vector_Playlist__std__optional_QueueOperation__Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>
+  /**
+   * Specialized version of `std::function<void(const std::string&, const Playlist&, std::optional<QueueOperation>)>`.
+   */
+  using Func_void_std__string_Playlist_std__optional_QueueOperation_ = std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::string& / * playlistId * /, const Playlist& / * playlist * /, std::optional<QueueOperation> / * operation * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__string_Playlist_std__optional_QueueOperation__Wrapper final {
+  public:
+    explicit Func_void_std__string_Playlist_std__optional_QueueOperation__Wrapper(std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>&& func): _function(std::make_unique<std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>>(std::move(func))) {}
+    inline void call(std::string playlistId, Playlist playlist, std::optional<QueueOperation> operation) const noexcept {
+      _function->operator()(playlistId, playlist, operation);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__string_Playlist_std__optional_QueueOperation_ create_Func_void_std__string_Playlist_std__optional_QueueOperation_(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__string_Playlist_std__optional_QueueOperation__Wrapper wrap_Func_void_std__string_Playlist_std__optional_QueueOperation_(Func_void_std__string_Playlist_std__optional_QueueOperation_ value) noexcept {
+    return Func_void_std__string_Playlist_std__optional_QueueOperation__Wrapper(std::move(value));
   }
   
   // pragma MARK: std::shared_ptr<HybridPlayerQueueSpec>
@@ -128,6 +252,15 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   using std__weak_ptr_HybridPlayerQueueSpec_ = std::weak_ptr<HybridPlayerQueueSpec>;
   inline std__weak_ptr_HybridPlayerQueueSpec_ weakify_std__shared_ptr_HybridPlayerQueueSpec_(const std::shared_ptr<HybridPlayerQueueSpec>& strong) noexcept { return strong; }
   
+  // pragma MARK: Result<std::string>
+  using Result_std__string_ = Result<std::string>;
+  inline Result_std__string_ create_Result_std__string_(const std::string& value) noexcept {
+    return Result<std::string>::withValue(value);
+  }
+  inline Result_std__string_ create_Result_std__string_(const std::exception_ptr& error) noexcept {
+    return Result<std::string>::withError(error);
+  }
+  
   // pragma MARK: Result<void>
   using Result_void_ = Result<void>;
   inline Result_void_ create_Result_void_() noexcept {
@@ -137,13 +270,31 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Result<void>::withError(error);
   }
   
-  // pragma MARK: Result<std::vector<TrackItem>>
-  using Result_std__vector_TrackItem__ = Result<std::vector<TrackItem>>;
-  inline Result_std__vector_TrackItem__ create_Result_std__vector_TrackItem__(const std::vector<TrackItem>& value) noexcept {
-    return Result<std::vector<TrackItem>>::withValue(value);
+  // pragma MARK: Result<std::variant<nitro::NullType, Playlist>>
+  using Result_std__variant_nitro__NullType__Playlist__ = Result<std::variant<nitro::NullType, Playlist>>;
+  inline Result_std__variant_nitro__NullType__Playlist__ create_Result_std__variant_nitro__NullType__Playlist__(const std::variant<nitro::NullType, Playlist>& value) noexcept {
+    return Result<std::variant<nitro::NullType, Playlist>>::withValue(value);
   }
-  inline Result_std__vector_TrackItem__ create_Result_std__vector_TrackItem__(const std::exception_ptr& error) noexcept {
-    return Result<std::vector<TrackItem>>::withError(error);
+  inline Result_std__variant_nitro__NullType__Playlist__ create_Result_std__variant_nitro__NullType__Playlist__(const std::exception_ptr& error) noexcept {
+    return Result<std::variant<nitro::NullType, Playlist>>::withError(error);
+  }
+  
+  // pragma MARK: Result<std::vector<Playlist>>
+  using Result_std__vector_Playlist__ = Result<std::vector<Playlist>>;
+  inline Result_std__vector_Playlist__ create_Result_std__vector_Playlist__(const std::vector<Playlist>& value) noexcept {
+    return Result<std::vector<Playlist>>::withValue(value);
+  }
+  inline Result_std__vector_Playlist__ create_Result_std__vector_Playlist__(const std::exception_ptr& error) noexcept {
+    return Result<std::vector<Playlist>>::withError(error);
+  }
+  
+  // pragma MARK: Result<std::variant<nitro::NullType, std::string>>
+  using Result_std__variant_nitro__NullType__std__string__ = Result<std::variant<nitro::NullType, std::string>>;
+  inline Result_std__variant_nitro__NullType__std__string__ create_Result_std__variant_nitro__NullType__std__string__(const std::variant<nitro::NullType, std::string>& value) noexcept {
+    return Result<std::variant<nitro::NullType, std::string>>::withValue(value);
+  }
+  inline Result_std__variant_nitro__NullType__std__string__ create_Result_std__variant_nitro__NullType__std__string__(const std::exception_ptr& error) noexcept {
+    return Result<std::variant<nitro::NullType, std::string>>::withError(error);
   }
   
   // pragma MARK: std::variant<nitro::NullType, TrackItem>

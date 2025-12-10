@@ -32,6 +32,7 @@ namespace margelo::nitro::nitroplayer {
     ADD      SWIFT_NAME(add) = 0,
     REMOVE      SWIFT_NAME(remove) = 1,
     CLEAR      SWIFT_NAME(clear) = 2,
+    UPDATE      SWIFT_NAME(update) = 3,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::nitroplayer
@@ -47,6 +48,7 @@ namespace margelo::nitro {
         case hashString("add"): return margelo::nitro::nitroplayer::QueueOperation::ADD;
         case hashString("remove"): return margelo::nitro::nitroplayer::QueueOperation::REMOVE;
         case hashString("clear"): return margelo::nitro::nitroplayer::QueueOperation::CLEAR;
+        case hashString("update"): return margelo::nitro::nitroplayer::QueueOperation::UPDATE;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum QueueOperation - invalid value!");
       }
@@ -56,6 +58,7 @@ namespace margelo::nitro {
         case margelo::nitro::nitroplayer::QueueOperation::ADD: return JSIConverter<std::string>::toJSI(runtime, "add");
         case margelo::nitro::nitroplayer::QueueOperation::REMOVE: return JSIConverter<std::string>::toJSI(runtime, "remove");
         case margelo::nitro::nitroplayer::QueueOperation::CLEAR: return JSIConverter<std::string>::toJSI(runtime, "clear");
+        case margelo::nitro::nitroplayer::QueueOperation::UPDATE: return JSIConverter<std::string>::toJSI(runtime, "update");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert QueueOperation to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -70,6 +73,7 @@ namespace margelo::nitro {
         case hashString("add"):
         case hashString("remove"):
         case hashString("clear"):
+        case hashString("update"):
           return true;
         default:
           return false;

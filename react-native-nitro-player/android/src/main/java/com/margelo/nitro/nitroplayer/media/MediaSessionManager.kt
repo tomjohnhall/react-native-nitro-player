@@ -20,7 +20,8 @@ import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.margelo.nitro.nitroplayer.TrackItem
-import com.margelo.nitro.nitroplayer.queue.QueueManager
+import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
+import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,8 +33,13 @@ import java.net.URL
 class MediaSessionManager(
     private val context: Context,
     private val player: ExoPlayer,
-    private val queueManager: QueueManager
+    private val playlistManager: PlaylistManager
 ) {
+    private var trackPlayerCore: TrackPlayerCore? = null
+    
+    fun setTrackPlayerCore(core: TrackPlayerCore) {
+        trackPlayerCore = core
+    }
     var mediaSession: MediaSession? = null  // Make public so MediaBrowserService can access it
         private set
     private var notificationManager: NotificationManager? = null
@@ -94,6 +100,16 @@ class MediaSessionManager(
                                 MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
                             )
                             .build()
+                    }
+                    
+                    override fun onCustomCommand(
+                        session: MediaSession,
+                        controller: MediaSession.ControllerInfo,
+                        customCommand: SessionCommand,
+                        args: android.os.Bundle
+                    ): ListenableFuture<SessionResult> {
+                        // Handle custom commands if needed
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
                 })
                 .build()
@@ -157,7 +173,21 @@ class MediaSessionManager(
     
     private fun getCurrentTrack(): TrackItem? {
         val currentMediaItem = player.currentMediaItem ?: return null
-        return queueManager.getTrackById(currentMediaItem.mediaId)
+        val mediaId = currentMediaItem.mediaId
+        
+        // Parse mediaId format: "playlistId:trackId" or just "trackId"
+        val trackId = if (mediaId.contains(':')) {
+            mediaId.substring(mediaId.indexOf(':') + 1)
+        } else {
+            mediaId
+        }
+        
+        // Find track in current playlist or all playlists
+        return trackPlayerCore?.getCurrentPlaylistId()?.let { playlistId ->
+            playlistManager.getPlaylist(playlistId)?.tracks?.find { it.id == trackId }
+        } ?: playlistManager.getAllPlaylists()
+            .flatMap { it.tracks }
+            .find { it.id == trackId }
     }
     
     private fun updateNotification() {
@@ -224,7 +254,7 @@ class MediaSessionManager(
         )
         
         // Load artwork asynchronously and update notification
-        track?.artwork?.let { artworkUrl ->
+        track?.artwork?.asSecondOrNull()?.let { artworkUrl ->
             scope.launch {
                 val bitmap = loadArtworkBitmap(artworkUrl)
                 if (bitmap != null) {
@@ -265,7 +295,9 @@ class MediaSessionManager(
         val currentTrack = getCurrentTrack()
         if (currentTrack != null) {
             scope.launch {
-                loadArtworkBitmap(currentTrack.artwork)
+                currentTrack.artwork?.asSecondOrNull()?.let { artworkUrl ->
+                    loadArtworkBitmap(artworkUrl)
+                }
                 updateNotification()
             }
         } else {

@@ -17,6 +17,10 @@
 #include <NitroModules/JNICallable.hpp>
 #include "JTrackItem.hpp"
 #include <string>
+#include <NitroModules/Null.hpp>
+#include <variant>
+#include "JVariant_NullType_String.hpp"
+#include <NitroModules/JNull.hpp>
 #include "JReason.hpp"
 
 namespace margelo::nitro::nitroplayer {

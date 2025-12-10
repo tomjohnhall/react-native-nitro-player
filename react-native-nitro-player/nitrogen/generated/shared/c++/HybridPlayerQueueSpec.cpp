@@ -14,12 +14,19 @@ namespace margelo::nitro::nitroplayer {
     HybridObject::loadHybridMethods();
     // load custom methods/properties
     registerHybrids(this, [](Prototype& prototype) {
-      prototype.registerHybridMethod("loadQueue", &HybridPlayerQueueSpec::loadQueue);
-      prototype.registerHybridMethod("loadSingleTrack", &HybridPlayerQueueSpec::loadSingleTrack);
-      prototype.registerHybridMethod("deleteTrack", &HybridPlayerQueueSpec::deleteTrack);
-      prototype.registerHybridMethod("clearQueue", &HybridPlayerQueueSpec::clearQueue);
-      prototype.registerHybridMethod("getQueue", &HybridPlayerQueueSpec::getQueue);
-      prototype.registerHybridMethod("onQueueChanged", &HybridPlayerQueueSpec::onQueueChanged);
+      prototype.registerHybridMethod("createPlaylist", &HybridPlayerQueueSpec::createPlaylist);
+      prototype.registerHybridMethod("deletePlaylist", &HybridPlayerQueueSpec::deletePlaylist);
+      prototype.registerHybridMethod("updatePlaylist", &HybridPlayerQueueSpec::updatePlaylist);
+      prototype.registerHybridMethod("getPlaylist", &HybridPlayerQueueSpec::getPlaylist);
+      prototype.registerHybridMethod("getAllPlaylists", &HybridPlayerQueueSpec::getAllPlaylists);
+      prototype.registerHybridMethod("addTrackToPlaylist", &HybridPlayerQueueSpec::addTrackToPlaylist);
+      prototype.registerHybridMethod("addTracksToPlaylist", &HybridPlayerQueueSpec::addTracksToPlaylist);
+      prototype.registerHybridMethod("removeTrackFromPlaylist", &HybridPlayerQueueSpec::removeTrackFromPlaylist);
+      prototype.registerHybridMethod("reorderTrackInPlaylist", &HybridPlayerQueueSpec::reorderTrackInPlaylist);
+      prototype.registerHybridMethod("loadPlaylist", &HybridPlayerQueueSpec::loadPlaylist);
+      prototype.registerHybridMethod("getCurrentPlaylistId", &HybridPlayerQueueSpec::getCurrentPlaylistId);
+      prototype.registerHybridMethod("onPlaylistsChanged", &HybridPlayerQueueSpec::onPlaylistsChanged);
+      prototype.registerHybridMethod("onPlaylistChanged", &HybridPlayerQueueSpec::onPlaylistChanged);
     });
   }
 

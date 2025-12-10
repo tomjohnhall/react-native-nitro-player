@@ -31,7 +31,7 @@ data class PlayerState(
   val currentState: TrackPlayerState,
   @DoNotStrip
   @Keep
-  val queue: Array<TrackItem>,
+  val currentPlaylistId: Variant_NullType_String?,
   @DoNotStrip
   @Keep
   val currentIndex: Double
@@ -46,8 +46,8 @@ data class PlayerState(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(currentTrack: Variant_NullType_TrackItem?, currentPosition: Double, totalDuration: Double, currentState: TrackPlayerState, queue: Array<TrackItem>, currentIndex: Double): PlayerState {
-      return PlayerState(currentTrack, currentPosition, totalDuration, currentState, queue, currentIndex)
+    private fun fromCpp(currentTrack: Variant_NullType_TrackItem?, currentPosition: Double, totalDuration: Double, currentState: TrackPlayerState, currentPlaylistId: Variant_NullType_String?, currentIndex: Double): PlayerState {
+      return PlayerState(currentTrack, currentPosition, totalDuration, currentState, currentPlaylistId, currentIndex)
     }
   }
 }

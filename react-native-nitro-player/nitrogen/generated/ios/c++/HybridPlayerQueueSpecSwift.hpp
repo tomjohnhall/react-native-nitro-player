@@ -12,15 +12,20 @@
 // Forward declaration of `HybridPlayerQueueSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 
+// Forward declaration of `Playlist` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct Playlist; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 
-#include "TrackItem.hpp"
-#include <vector>
 #include <string>
 #include <optional>
+#include <NitroModules/Null.hpp>
+#include "Playlist.hpp"
+#include <variant>
+#include "TrackItem.hpp"
+#include <vector>
 #include "QueueOperation.hpp"
 #include <functional>
 
@@ -68,40 +73,88 @@ namespace margelo::nitro::nitroplayer {
 
   public:
     // Methods
-    inline void loadQueue(const std::vector<TrackItem>& tracks) override {
-      auto __result = _swiftPart.loadQueue(tracks);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-    }
-    inline void loadSingleTrack(const TrackItem& track, std::optional<double> index) override {
-      auto __result = _swiftPart.loadSingleTrack(std::forward<decltype(track)>(track), index);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-    }
-    inline void deleteTrack(const std::string& id) override {
-      auto __result = _swiftPart.deleteTrack(id);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-    }
-    inline void clearQueue() override {
-      auto __result = _swiftPart.clearQueue();
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-    }
-    inline std::vector<TrackItem> getQueue() override {
-      auto __result = _swiftPart.getQueue();
+    inline std::string createPlaylist(const std::string& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) override {
+      auto __result = _swiftPart.createPlaylist(name, description, artwork);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline void onQueueChanged(const std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>& callback) override {
-      auto __result = _swiftPart.onQueueChanged(callback);
+    inline void deletePlaylist(const std::string& playlistId) override {
+      auto __result = _swiftPart.deletePlaylist(playlistId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void updatePlaylist(const std::string& playlistId, const std::optional<std::string>& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) override {
+      auto __result = _swiftPart.updatePlaylist(playlistId, name, description, artwork);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline std::variant<nitro::NullType, Playlist> getPlaylist(const std::string& playlistId) override {
+      auto __result = _swiftPart.getPlaylist(playlistId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::vector<Playlist> getAllPlaylists() override {
+      auto __result = _swiftPart.getAllPlaylists();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline void addTrackToPlaylist(const std::string& playlistId, const TrackItem& track, std::optional<double> index) override {
+      auto __result = _swiftPart.addTrackToPlaylist(playlistId, std::forward<decltype(track)>(track), index);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) override {
+      auto __result = _swiftPart.addTracksToPlaylist(playlistId, tracks, index);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) override {
+      auto __result = _swiftPart.removeTrackFromPlaylist(playlistId, trackId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) override {
+      auto __result = _swiftPart.reorderTrackInPlaylist(playlistId, trackId, std::forward<decltype(newIndex)>(newIndex));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void loadPlaylist(const std::string& playlistId) override {
+      auto __result = _swiftPart.loadPlaylist(playlistId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline std::variant<nitro::NullType, std::string> getCurrentPlaylistId() override {
+      auto __result = _swiftPart.getCurrentPlaylistId();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline void onPlaylistsChanged(const std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>& callback) override {
+      auto __result = _swiftPart.onPlaylistsChanged(callback);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void onPlaylistChanged(const std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>& callback) override {
+      auto __result = _swiftPart.onPlaylistChanged(callback);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

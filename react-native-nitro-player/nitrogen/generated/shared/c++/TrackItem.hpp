@@ -26,6 +26,9 @@
 
 
 #include <string>
+#include <NitroModules/Null.hpp>
+#include <variant>
+#include <optional>
 
 namespace margelo::nitro::nitroplayer {
 
@@ -40,11 +43,11 @@ namespace margelo::nitro::nitroplayer {
     std::string album     SWIFT_PRIVATE;
     double duration     SWIFT_PRIVATE;
     std::string url     SWIFT_PRIVATE;
-    std::string artwork     SWIFT_PRIVATE;
+    std::optional<std::variant<nitro::NullType, std::string>> artwork     SWIFT_PRIVATE;
 
   public:
     TrackItem() = default;
-    explicit TrackItem(std::string id, std::string title, std::string artist, std::string album, double duration, std::string url, std::string artwork): id(id), title(title), artist(artist), album(album), duration(duration), url(url), artwork(artwork) {}
+    explicit TrackItem(std::string id, std::string title, std::string artist, std::string album, double duration, std::string url, std::optional<std::variant<nitro::NullType, std::string>> artwork): id(id), title(title), artist(artist), album(album), duration(duration), url(url), artwork(artwork) {}
   };
 
 } // namespace margelo::nitro::nitroplayer
@@ -63,7 +66,7 @@ namespace margelo::nitro {
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "album")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "duration")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "url")),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "artwork"))
+        JSIConverter<std::optional<std::variant<nitro::NullType, std::string>>>::fromJSI(runtime, obj.getProperty(runtime, "artwork"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroplayer::TrackItem& arg) {
@@ -74,7 +77,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, "album", JSIConverter<std::string>::toJSI(runtime, arg.album));
       obj.setProperty(runtime, "duration", JSIConverter<double>::toJSI(runtime, arg.duration));
       obj.setProperty(runtime, "url", JSIConverter<std::string>::toJSI(runtime, arg.url));
-      obj.setProperty(runtime, "artwork", JSIConverter<std::string>::toJSI(runtime, arg.artwork));
+      obj.setProperty(runtime, "artwork", JSIConverter<std::optional<std::variant<nitro::NullType, std::string>>>::toJSI(runtime, arg.artwork));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -91,7 +94,7 @@ namespace margelo::nitro {
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "album"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "duration"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "url"))) return false;
-      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "artwork"))) return false;
+      if (!JSIConverter<std::optional<std::variant<nitro::NullType, std::string>>>::canConvert(runtime, obj.getProperty(runtime, "artwork"))) return false;
       return true;
     }
   };

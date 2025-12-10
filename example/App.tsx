@@ -17,7 +17,7 @@ import {
   useOnPlaybackProgressChange,
   useAndroidAutoConnection
 } from 'react-native-nitro-player';
-import type { TrackItem, QueueOperation, TrackPlayerState, Reason, PlayerState, PlayerConfig } from '../react-native-nitro-player/src/types/PlayerQueue';
+import type { TrackItem, QueueOperation, TrackPlayerState, Reason, PlayerState, PlayerConfig, Playlist } from '../react-native-nitro-player/src/types/PlayerQueue';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -33,9 +33,7 @@ TrackPlayer.configure({
   showInNotification: true,
 });
 
-
-
-const sampleTracks: TrackItem[] = [
+const sampleTracks1: TrackItem[] = [
   {
     id: '1',
     title: 'Sunset Drive',
@@ -65,10 +63,31 @@ const sampleTracks: TrackItem[] = [
   },
 ];
 
-PlayerQueue.loadQueue(sampleTracks);
+const sampleTracks2: TrackItem[] = [
+  {
+    id: '4',
+    title: 'Ocean Waves',
+    artist: 'Nature Sounds',
+    album: 'Relaxation',
+    duration: 300.0,
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+    artwork: 'https://via.placeholder.com/150/0000FF/FFFFFF?Text=Ocean',
+  },
+  {
+    id: '5',
+    title: 'Forest Walk',
+    artist: 'Nature Sounds',
+    album: 'Relaxation',
+    duration: 280.0,
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+    artwork: 'https://via.placeholder.com/150/008000/FFFFFF?Text=Forest',
+  },
+];
 
 function AppContent() {
-  const [queue, setQueue] = useState<TrackItem[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
+  const [currentPlaylistId, setCurrentPlaylistId] = useState<string | null>(null);
   const [lastOperation, setLastOperation] = useState<QueueOperation | undefined>(undefined);
   const [playerState, setPlayerState] = useState<PlayerState | undefined>(undefined);
 
@@ -78,9 +97,6 @@ function AppContent() {
   const { position: lastSeekPosition, totalDuration: lastSeekDuration } = useOnSeek();
   const { position: playbackPosition, totalDuration, isManuallySeeked } = useOnPlaybackProgressChange();
   const { isConnected: isAndroidAutoConnected } = useAndroidAutoConnection();
-
-  // Sample tracks for demonstration
-
 
   // Log changes for debugging
   useEffect(() => {
@@ -104,68 +120,121 @@ function AppContent() {
   useEffect(() => {
     console.log('Initializing player');
 
-    // Get initial queue
-    const initialQueue = PlayerQueue.getQueue();
-    setQueue(initialQueue);
+    // Get initial playlists
+    const initialPlaylists = PlayerQueue.getAllPlaylists();
+    setPlaylists(initialPlaylists);
+    
+    // Get current playlist ID
+    const currentId = PlayerQueue.getCurrentPlaylistId();
+    setCurrentPlaylistId(currentId);
+    if (currentId) {
+      const playlist = PlayerQueue.getPlaylist(currentId);
+      setCurrentPlaylist(playlist);
+    }
 
-    // Listen to queue changes
-    PlayerQueue.onQueueChanged((updatedQueue, operation) => {
-      console.log('Queue changed:', operation, updatedQueue);
-      setQueue(updatedQueue);
+    // Listen to playlist changes
+    PlayerQueue.onPlaylistsChanged((updatedPlaylists, operation) => {
+      console.log('Playlists changed:', operation, updatedPlaylists);
+      setPlaylists(updatedPlaylists);
       setLastOperation(operation);
+      
+      // Update current playlist if it changed
+      const currentId = PlayerQueue.getCurrentPlaylistId();
+      setCurrentPlaylistId(currentId);
+      if (currentId) {
+        const playlist = PlayerQueue.getPlaylist(currentId);
+        setCurrentPlaylist(playlist);
+      }
     });
   }, []);
 
-  const handleLoadQueue = () => {
-    console.log('Loading queue with', sampleTracks.length, 'tracks');
-    PlayerQueue.loadQueue(sampleTracks);
+  const handleCreatePlaylist1 = () => {
+    console.log('Creating playlist 1');
+    const playlistId = PlayerQueue.createPlaylist('Chill Vibes', 'Relaxing music for your day', sampleTracks1[0].artwork || undefined);
+    PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+    const playlists = PlayerQueue.getAllPlaylists();
+    setPlaylists(playlists);
   };
 
-  const handleAddTrack = () => {
+  const handleCreatePlaylist2 = () => {
+    console.log('Creating playlist 2');
+    const playlistId = PlayerQueue.createPlaylist('Nature Sounds', 'Sounds of nature', sampleTracks2[0].artwork || undefined);
+    PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks2);
+    const playlists = PlayerQueue.getAllPlaylists();
+    setPlaylists(playlists);
+  };
+
+  const handleLoadPlaylist = (playlistId: string) => {
+    console.log('Loading playlist:', playlistId);
+    PlayerQueue.loadPlaylist(playlistId);
+    const playlist = PlayerQueue.getPlaylist(playlistId);
+    setCurrentPlaylist(playlist);
+    setCurrentPlaylistId(playlistId);
+  };
+
+  const handleAddTracksToPlaylist = (playlistId: string) => {
+    console.log('Adding tracks to playlist:', playlistId);
+    const newTracks: TrackItem[] = [
+      {
+        id: `${Date.now()}_1`,
+        title: 'New Track 1',
+        artist: 'Unknown Artist',
+        album: 'Unknown Album',
+        duration: 180.0,
+        url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+        artwork: 'https://via.placeholder.com/150/FFFF00/000000?Text=New1',
+      },
+      {
+        id: `${Date.now()}_2`,
+        title: 'New Track 2',
+        artist: 'Unknown Artist',
+        album: 'Unknown Album',
+        duration: 200.0,
+        url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+        artwork: 'https://via.placeholder.com/150/00FFFF/000000?Text=New2',
+      },
+    ];
+    PlayerQueue.addTracksToPlaylist(playlistId, newTracks);
+    const playlists = PlayerQueue.getAllPlaylists();
+    setPlaylists(playlists);
+  };
+
+  const handleAddTrackToPlaylist = (playlistId: string) => {
+    console.log('Adding track to playlist:', playlistId);
     const newTrack: TrackItem = {
       id: `${Date.now()}`,
-      title: 'New Track',
+      title: 'Single New Track',
       artist: 'Unknown Artist',
       album: 'Unknown Album',
-      duration: 180.0,
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
-      artwork: 'https://via.placeholder.com/150/FFFF00/000000?Text=New',
+      duration: 190.0,
+      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+      artwork: 'https://via.placeholder.com/150/FF00FF/000000?Text=Single',
     };
-    console.log('Adding track:', newTrack.id);
-    PlayerQueue.loadSingleTrack(newTrack);
+    PlayerQueue.addTrackToPlaylist(playlistId, newTrack);
+    const playlists = PlayerQueue.getAllPlaylists();
+    setPlaylists(playlists);
   };
 
-  const handleAddTrackAtIndex = () => {
-    const newTrack: TrackItem = {
-      id: `${Date.now()}_indexed`,
-      title: 'Track at Index 1',
-      artist: 'Unknown Artist',
-      album: 'Unknown Album',
-      duration: 200.0,
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
-      artwork: 'https://via.placeholder.com/150/00FFFF/000000?Text=Indexed',
-    };
-    console.log('Adding track at index 1:', newTrack.id);
-    PlayerQueue.loadSingleTrack(newTrack, 1);
-  };
-
-  const handleDeleteTrack = () => {
-    if (queue.length > 0) {
-      const trackToDelete = queue[0];
-      console.log('Deleting track:', trackToDelete.id);
-      PlayerQueue.deleteTrack(trackToDelete.id);
+  const handleDeletePlaylist = (playlistId: string) => {
+    console.log('Deleting playlist:', playlistId);
+    PlayerQueue.deletePlaylist(playlistId);
+    const playlists = PlayerQueue.getAllPlaylists();
+    setPlaylists(playlists);
+    if (currentPlaylistId === playlistId) {
+      setCurrentPlaylist(null);
+      setCurrentPlaylistId(null);
     }
   };
 
-  const handleClearQueue = () => {
-    console.log('Clearing queue');
-    PlayerQueue.clearQueue();
-  };
-
-  const handleGetQueue = () => {
-    const currentQueue = PlayerQueue.getQueue();
-    console.log('Current queue:', currentQueue);
-    setQueue(currentQueue);
+  const handleRemoveTrack = (playlistId: string, trackId: string) => {
+    console.log('Removing track:', trackId, 'from playlist:', playlistId);
+    PlayerQueue.removeTrackFromPlaylist(playlistId, trackId);
+    const playlists = PlayerQueue.getAllPlaylists();
+    setPlaylists(playlists);
+    if (currentPlaylistId === playlistId) {
+      const playlist = PlayerQueue.getPlaylist(playlistId);
+      setCurrentPlaylist(playlist);
+    }
   };
 
   const handlePlay = () => TrackPlayer.play();
@@ -222,12 +291,6 @@ function AppContent() {
             </TouchableOpacity>
           </View>
           
-          {/* Android Auto Connection Indicator */}
-          <View style={[styles.connectionIndicator, isAndroidAutoConnected && styles.connectionIndicatorConnected]}>
-            <Text style={styles.connectionText}>
-              {isAndroidAutoConnected ? '🚗 Playing on Car' : '📱 Playing on Phone'}
-            </Text>
-          </View>
           <Text style={styles.statusText}>State: {playbackState !== undefined ? playbackState : 'None'}</Text>
           {currentTrack && (
             <View style={styles.currentTrack}>
@@ -269,51 +332,104 @@ function AppContent() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Queue Operations</Text>
+          <Text style={styles.sectionTitle}>Playlist Management</Text>
 
-          <TouchableOpacity style={styles.button} onPress={handleLoadQueue}>
-            <Text style={styles.buttonText}>Load Queue (3 tracks)</Text>
+          <TouchableOpacity style={styles.button} onPress={handleCreatePlaylist1}>
+            <Text style={styles.buttonText}>Create "Chill Vibes" Playlist</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.button} onPress={handleAddTrack}>
-            <Text style={styles.buttonText}>Add Track to End</Text>
+          <TouchableOpacity style={styles.button} onPress={handleCreatePlaylist2}>
+            <Text style={styles.buttonText}>Create "Nature Sounds" Playlist</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.button} onPress={handleAddTrackAtIndex}>
-            <Text style={styles.buttonText}>Add Track at Index 1</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, queue.length === 0 && styles.buttonDisabled]}
-            onPress={handleDeleteTrack}
-            disabled={queue.length === 0}
-          >
-            <Text style={styles.buttonText}>Delete First Track</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, queue.length === 0 && styles.buttonDisabled]}
-            onPress={handleClearQueue}
-            disabled={queue.length === 0}
-          >
-            <Text style={styles.buttonText}>Clear Queue</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.button} onPress={handleGetQueue}>
-            <Text style={styles.buttonText}>Refresh Queue</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Queue Status ({queue.length} tracks)
-          </Text>
           {lastOperation && (
             <Text style={styles.operationText}>
               Last operation: {lastOperation}
             </Text>
           )}
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            All Playlists ({playlists.length})
+          </Text>
+          {playlists.length === 0 ? (
+            <Text style={styles.emptyText}>No playlists created yet</Text>
+          ) : (
+            playlists.map((playlist) => (
+              <View key={playlist.id} style={styles.playlistItem}>
+                <View style={styles.playlistHeader}>
+                  <View style={styles.playlistInfo}>
+                    <Text style={styles.playlistName}>{playlist.name}</Text>
+                    <Text style={styles.playlistDescription}>
+                      {playlist.description || 'No description'}
+                    </Text>
+                    <Text style={styles.playlistTracksCount}>
+                      {playlist.tracks.length} tracks
+                    </Text>
+                  </View>
+                  <View style={styles.playlistActions}>
+                    <TouchableOpacity 
+                      style={[styles.smallButton, currentPlaylistId === playlist.id && styles.activeButton]}
+                      onPress={() => handleLoadPlaylist(playlist.id)}
+                    >
+                      <Text style={styles.smallButtonText}>
+                        {currentPlaylistId === playlist.id ? '✓ Playing' : 'Play'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.smallButton}
+                      onPress={() => handleAddTracksToPlaylist(playlist.id)}
+                    >
+                      <Text style={styles.smallButtonText}>+ Multiple</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.smallButton}
+                      onPress={() => handleAddTrackToPlaylist(playlist.id)}
+                    >
+                      <Text style={styles.smallButtonText}>+ One</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.smallButton, styles.deleteButton]}
+                      onPress={() => handleDeletePlaylist(playlist.id)}
+                    >
+                      <Text style={styles.smallButtonText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                {playlist.tracks.length > 0 && (
+                  <View style={styles.tracksList}>
+                    {playlist.tracks.map((track, index) => (
+                      <View key={track.id} style={styles.trackItem}>
+                        <Text style={styles.trackIndex}>{index + 1}.</Text>
+                        <View style={styles.trackInfo}>
+                          <Text style={styles.trackTitle}>{track.title}</Text>
+                          <Text style={styles.trackArtist}>{track.artist}</Text>
+                        </View>
+                        <TouchableOpacity 
+                          style={styles.removeButton}
+                          onPress={() => handleRemoveTrack(playlist.id, track.id)}
+                        >
+                          <Text style={styles.removeButtonText}>×</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ))
+          )}
+        </View>
+
+        {currentPlaylist && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Current Playlist</Text>
+            <Text style={styles.currentPlaylistName}>{currentPlaylist.name}</Text>
+            <Text style={styles.currentPlaylistTracks}>
+              {currentPlaylist.tracks.length} tracks
+            </Text>
+          </View>
+        )}
 
         {playerState && (
           <View style={styles.section}>
@@ -346,29 +462,13 @@ function AppContent() {
               </View>
             )}
             <View style={styles.stateInfo}>
-              <Text style={styles.stateLabel}>Queue Length:</Text>
-              <Text style={styles.stateValue}>{playerState.queue.length} tracks</Text>
+              <Text style={styles.stateLabel}>Current Playlist ID:</Text>
+              <Text style={styles.stateValue}>
+                {playerState.currentPlaylistId || 'None'}
+              </Text>
             </View>
           </View>
         )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Current Queue</Text>
-          {queue.length === 0 ? (
-            <Text style={styles.emptyText}>Queue is empty</Text>
-          ) : (
-            queue.map((track, index) => (
-              <View key={track.id} style={styles.trackItem}>
-                <Text style={styles.trackIndex}>{index + 1}.</Text>
-                <View style={styles.trackInfo}>
-                  <Text style={styles.trackTitle}>{track.title}</Text>
-                  <Text style={styles.trackArtist}>{track.artist}</Text>
-                  <Text style={styles.trackAlbum}>{track.album}</Text>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
       </ScrollView>
     </View>
   );
@@ -424,6 +524,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
+  smallButton: {
+    backgroundColor: '#007AFF',
+    padding: 6,
+    borderRadius: 4,
+    marginLeft: 5,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  activeButton: {
+    backgroundColor: '#28a745',
+  },
+  deleteButton: {
+    backgroundColor: '#dc3545',
+  },
+  smallButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
   operationText: {
     fontSize: 14,
     color: '#666',
@@ -435,36 +554,88 @@ const styles = StyleSheet.create({
     color: '#999',
     fontStyle: 'italic',
   },
-  trackItem: {
-    flexDirection: 'row',
-    padding: 10,
-    marginBottom: 8,
+  playlistItem: {
+    marginBottom: 15,
+    padding: 12,
     backgroundColor: '#f9f9f9',
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  playlistHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  playlistInfo: {
+    flex: 1,
+  },
+  playlistName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  playlistDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  playlistTracksCount: {
+    fontSize: 12,
+    color: '#999',
+  },
+  playlistActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  tracksList: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  trackItem: {
+    flexDirection: 'row',
+    padding: 8,
+    marginBottom: 6,
+    backgroundColor: '#fff',
+    borderRadius: 4,
+    alignItems: 'center',
   },
   trackIndex: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     marginRight: 10,
     color: '#666',
+    minWidth: 25,
   },
   trackInfo: {
     flex: 1,
   },
   trackTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
   },
   trackArtist: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
     marginTop: 2,
   },
-  trackAlbum: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
+  removeButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#dc3545',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   controlsRow: {
     flexDirection: 'row',
@@ -512,6 +683,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   currentTrackArtist: {
+    fontSize: 14,
+    color: '#666',
+  },
+  currentPlaylistName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 5,
+  },
+  currentPlaylistTracks: {
     fontSize: 14,
     color: '#666',
   },

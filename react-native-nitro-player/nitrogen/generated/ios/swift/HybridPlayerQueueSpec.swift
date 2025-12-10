@@ -14,12 +14,19 @@ public protocol HybridPlayerQueueSpec_protocol: HybridObject {
   
 
   // Methods
-  func loadQueue(tracks: [TrackItem]) throws -> Void
-  func loadSingleTrack(track: TrackItem, index: Double?) throws -> Void
-  func deleteTrack(id: String) throws -> Void
-  func clearQueue() throws -> Void
-  func getQueue() throws -> [TrackItem]
-  func onQueueChanged(callback: @escaping (_ queue: [TrackItem], _ operation: QueueOperation?) -> Void) throws -> Void
+  func createPlaylist(name: String, description: String?, artwork: String?) throws -> String
+  func deletePlaylist(playlistId: String) throws -> Void
+  func updatePlaylist(playlistId: String, name: String?, description: String?, artwork: String?) throws -> Void
+  func getPlaylist(playlistId: String) throws -> Variant_NullType_Playlist
+  func getAllPlaylists() throws -> [Playlist]
+  func addTrackToPlaylist(playlistId: String, track: TrackItem, index: Double?) throws -> Void
+  func addTracksToPlaylist(playlistId: String, tracks: [TrackItem], index: Double?) throws -> Void
+  func removeTrackFromPlaylist(playlistId: String, trackId: String) throws -> Void
+  func reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double) throws -> Void
+  func loadPlaylist(playlistId: String) throws -> Void
+  func getCurrentPlaylistId() throws -> Variant_NullType_String
+  func onPlaylistsChanged(callback: @escaping (_ playlists: [Playlist], _ operation: QueueOperation?) -> Void) throws -> Void
+  func onPlaylistChanged(callback: @escaping (_ playlistId: String, _ playlist: Playlist, _ operation: QueueOperation?) -> Void) throws -> Void
 }
 
 public extension HybridPlayerQueueSpec_protocol {

@@ -6,10 +6,18 @@ export interface TrackItem {
     album: string;
     duration: number;
     url: string;
-    artwork: string;
+    artwork?: string | null;
 }
 
-export type QueueOperation = 'add' | 'remove' | 'clear';
+export interface Playlist {
+    id: string;
+    name: string;
+    description?: string | null;
+    artwork?: string | null;
+    tracks: TrackItem[];
+}
+
+export type QueueOperation = 'add' | 'remove' | 'clear' | 'update';
 
 export type TrackPlayerState = 'playing' | 'paused' | 'stopped';
 
@@ -20,7 +28,7 @@ export interface PlayerState {
     currentPosition: number;
     totalDuration: number;
     currentState: TrackPlayerState;
-    queue: TrackItem[];
+    currentPlaylistId: string | null;
     currentIndex: number;
 }
 

@@ -6,14 +6,16 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.NitroPlayerPackage
 import com.margelo.nitro.nitroplayer.PlayerState
+import com.margelo.nitro.nitroplayer.Variant_NullType_String
 import com.margelo.nitro.nitroplayer.connection.AndroidAutoConnectionDetector
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.TrackPlayerState
 import com.margelo.nitro.nitroplayer.Variant_NullType_TrackItem
-import com.margelo.nitro.nitroplayer.queue.QueueManager
+import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import com.margelo.nitro.nitroplayer.media.MediaSessionManager
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import java.util.concurrent.CountDownLatch
@@ -22,8 +24,9 @@ import java.util.concurrent.TimeUnit
 class TrackPlayerCore private constructor(private val context: Context) {
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private lateinit var player: ExoPlayer
-    private val queueManager = QueueManager.getInstance()
+    private val playlistManager = PlaylistManager.getInstance(context)
     private var mediaSessionManager: MediaSessionManager? = null
+    private var currentPlaylistId: String? = null
     private var isManuallySeeked = false
     private var isAndroidAutoConnected: Boolean = false
     private var androidAutoConnectionDetector: AndroidAutoConnectionDetector? = null
@@ -59,7 +62,9 @@ class TrackPlayerCore private constructor(private val context: Context) {
     init {
         handler.post {
             player = ExoPlayer.Builder(context).build()
-            mediaSessionManager = MediaSessionManager(context, player, queueManager)
+            mediaSessionManager = MediaSessionManager(context, player, playlistManager).apply {
+                setTrackPlayerCore(this@TrackPlayerCore)
+            }
             
             // Set references for MediaBrowserService
             NitroPlayerMediaBrowserService.trackPlayerCore = this
@@ -83,6 +88,23 @@ class TrackPlayerCore private constructor(private val context: Context) {
             
             player.addListener(object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                    // Handle playlist switching if needed
+                    mediaItem?.mediaId?.let { mediaId ->
+                        if (mediaId.contains(':')) {
+                            val colonIndex = mediaId.indexOf(':')
+                            val playlistId = mediaId.substring(0, colonIndex)
+                            if (playlistId != currentPlaylistId) {
+                                // Track from different playlist - ensure playlist is loaded
+                                val playlist = playlistManager.getPlaylist(playlistId)
+                                if (playlist != null && currentPlaylistId != playlistId) {
+                                    // This shouldn't happen if playlists are loaded correctly,
+                                    // but handle it as a safety measure
+                                    println("⚠️ TrackPlayerCore: Detected track from different playlist, updating...")
+                                }
+                            }
+                        }
+                    }
+                    
                     val track = findTrack(mediaItem)
                     if (track != null) {
                         val r = when (reason) {
@@ -93,6 +115,13 @@ class TrackPlayerCore private constructor(private val context: Context) {
                         }
                         onChangeTrack?.invoke(track, r)
                         mediaSessionManager?.onTrackChanged()
+                    }
+                }
+                
+                override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                    if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
+                        // Playlist changed - update MediaBrowserService
+                        NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
                     }
                 }
 
@@ -124,18 +153,89 @@ class TrackPlayerCore private constructor(private val context: Context) {
                 }
             })
 
-            updatePlayerQueue(queueManager.getTracks())
             // Start progress updates
             handler.post(progressUpdateRunnable)
         }
-
-        queueManager.addQueueChangeListener { tracks, _ ->
+    }
+    
+    /**
+     * Load a playlist for playback using ExoPlayer's native playlist API
+     * Based on: https://developer.android.com/media/media3/exoplayer/playlists
+     */
+    fun loadPlaylist(playlistId: String) {
+        handler.post {
+            val playlist = playlistManager.getPlaylist(playlistId)
+            if (playlist != null) {
+                currentPlaylistId = playlistId
+                updatePlayerQueue(playlist.tracks)
+            }
+        }
+    }
+    
+    /**
+     * Play a specific track from a playlist (for Android Auto)
+     * MediaId format: "playlistId:trackId"
+     */
+    fun playFromPlaylistTrack(mediaId: String) {
+        handler.post {
+            try {
+                // Parse mediaId: "playlistId:trackId"
+                val colonIndex = mediaId.indexOf(':')
+                if (colonIndex > 0 && colonIndex < mediaId.length - 1) {
+                    val playlistId = mediaId.substring(0, colonIndex)
+                    val trackId = mediaId.substring(colonIndex + 1)
+                    
+                    val playlist = playlistManager.getPlaylist(playlistId)
+                    if (playlist != null) {
+                        val trackIndex = playlist.tracks.indexOfFirst { it.id == trackId }
+                        if (trackIndex >= 0) {
+                            // Load playlist if not already loaded
+                            if (currentPlaylistId != playlistId) {
+                                loadPlaylist(playlistId)
+                                // Wait a bit for playlist to load, then seek
+                                handler.postDelayed({
+                                    playFromIndex(trackIndex)
+                                }, 100)
+                            } else {
+                                // Playlist already loaded, just seek to track
+                                playFromIndex(trackIndex)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                println("❌ TrackPlayerCore: Error playing from playlist track - ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+    
+    /**
+     * Update the player queue when playlist changes
+     */
+    fun updatePlaylist(playlistId: String) {
             handler.post {
-                if (::player.isInitialized) {
-                    updatePlayerQueue(tracks)
+            if (currentPlaylistId == playlistId) {
+                val playlist = playlistManager.getPlaylist(playlistId)
+                if (playlist != null) {
+                    updatePlayerQueue(playlist.tracks)
                 }
             }
         }
+    }
+    
+    /**
+     * Get current playlist ID
+     */
+    fun getCurrentPlaylistId(): String? {
+        return currentPlaylistId
+    }
+    
+    /**
+     * Get playlist manager (for access from other classes like Google Cast)
+     */
+    fun getPlaylistManager(): PlaylistManager {
+        return playlistManager
     }
 
     private fun emitStateChange(reason: Reason? = null) {
@@ -153,31 +253,54 @@ class TrackPlayerCore private constructor(private val context: Context) {
     }
 
     private fun updatePlayerQueue(tracks: List<TrackItem>) {
-        val mediaItems = tracks.map { it.toMediaItem() }
+        // Create MediaItems with playlist info in mediaId for Android Auto
+        val mediaItems = tracks.mapIndexed { index, track ->
+            val playlistId = currentPlaylistId ?: ""
+            // Format: "playlistId:trackId" so we can identify playlist and track
+            val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
+            track.toMediaItem(mediaId)
+        }
+        
         player.setMediaItems(mediaItems, false)
         if (player.playbackState == Player.STATE_IDLE && mediaItems.isNotEmpty()) {
             player.prepare()
         }
     }
 
-    private fun TrackItem.toMediaItem(): MediaItem {
-        val metadata = MediaMetadata.Builder()
+    private fun TrackItem.toMediaItem(customMediaId: String? = null): MediaItem {
+        val metadataBuilder = MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(artist)
             .setAlbumTitle(album)
-            .setArtworkUri(Uri.parse(artwork))
-            .build()
-
+        
+        artwork?.asSecondOrNull()?.let { artworkUrl ->
+            try {
+                metadataBuilder.setArtworkUri(Uri.parse(artworkUrl))
+            } catch (e: Exception) {
+                // Ignore invalid artwork URI
+            }
+        }
+        
         return MediaItem.Builder()
-            .setMediaId(id)
+            .setMediaId(customMediaId ?: id)
             .setUri(url)
-            .setMediaMetadata(metadata)
+            .setMediaMetadata(metadataBuilder.build())
             .build()
     }
 
     private fun findTrack(mediaItem: MediaItem?): TrackItem? {
         if (mediaItem == null) return null
-        return queueManager.getTrackById(mediaItem.mediaId)
+        
+        val mediaId = mediaItem.mediaId
+        val trackId = if (mediaId.contains(':')) {
+            // Format: "playlistId:trackId"
+            mediaId.substring(mediaId.indexOf(':') + 1)
+        } else {
+            mediaId
+        }
+        
+        val playlist = currentPlaylistId?.let { playlistManager.getPlaylist(it) }
+        return playlist?.tracks?.find { it.id == trackId }
     }
 
     fun play() {
@@ -266,17 +389,12 @@ class TrackPlayerCore private constructor(private val context: Context) {
                 else -> TrackPlayerState.STOPPED
             }
             
-            // Convert List to Array
-            val queueList = queueManager.getTracks()
-            val queue = queueList.toTypedArray()
+            // Get current playlist
+            val currentPlaylist = currentPlaylistId?.let { playlistManager.getPlaylist(it) }
             
-            // Use ExoPlayer's currentMediaItemIndex, or find by mediaId if index is not available
-            // Convert Int to Double
+            // Use ExoPlayer's currentMediaItemIndex
             val currentIndex = if (player.currentMediaItemIndex >= 0) {
                 player.currentMediaItemIndex.toDouble()
-            } else if (currentMediaItem != null) {
-                val index = queueManager.getTrackIndex(currentMediaItem.mediaId)
-                if (index >= 0) index.toDouble() else -1.0
             } else {
                 -1.0
             }
@@ -286,20 +404,17 @@ class TrackPlayerCore private constructor(private val context: Context) {
                 currentPosition = currentPosition,
                 totalDuration = totalDuration,
                 currentState = currentState,
-                queue = queue,
+                currentPlaylistId = currentPlaylistId?.let { Variant_NullType_String.create(it) },
                 currentIndex = currentIndex
             )
         } else {
             // Return default state if player is not initialized
-            val queueList = queueManager.getTracks()
-            val queue = queueList.toTypedArray()
-            
             PlayerState(
                 currentTrack = null,
                 currentPosition = 0.0,
                 totalDuration = 0.0,
                 currentState = TrackPlayerState.STOPPED,
-                queue = queue,
+                currentPlaylistId = currentPlaylistId?.let { Variant_NullType_String.create(it) },
                 currentIndex = -1.0
             )
         }
@@ -322,9 +437,9 @@ class TrackPlayerCore private constructor(private val context: Context) {
         }
     }
     
-    // Public method to get queue for MediaBrowserService
-    fun getQueue(): List<TrackItem> {
-        return queueManager.getTracks()
+    // Public method to get all playlists (for MediaBrowserService and other classes)
+    fun getAllPlaylists(): List<com.margelo.nitro.nitroplayer.playlist.Playlist> {
+        return playlistManager.getAllPlaylists()
     }
     
     // Public method to get current track for MediaBrowserService
@@ -332,6 +447,16 @@ class TrackPlayerCore private constructor(private val context: Context) {
         if (!::player.isInitialized) return null
         val currentMediaItem = player.currentMediaItem ?: return null
         return findTrack(currentMediaItem)
+    }
+    
+    // Public method to play from a specific index (for Android Auto)
+    fun playFromIndex(index: Int) {
+        handler.post {
+            if (::player.isInitialized && index >= 0 && index < player.mediaItemCount) {
+                player.seekToDefaultPosition(index)
+                player.playWhenReady = true
+            }
+        }
     }
     
     // Clean up resources
@@ -342,18 +467,9 @@ class TrackPlayerCore private constructor(private val context: Context) {
         }
     }
     
-    // Public method for Android Auto to play from a specific index
-    fun playFromIndex(index: Int) {
-        handler.post {
-            if (::player.isInitialized && index >= 0 && index < player.mediaItemCount) {
-                player.seekToDefaultPosition(index)
-                player.playWhenReady = true
-            }
-        }
-    }
-    
     // Check if Android Auto is connected
     fun isAndroidAutoConnected(): Boolean {
         return isAndroidAutoConnected
     }
 }
+

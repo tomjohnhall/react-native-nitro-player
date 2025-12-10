@@ -16,7 +16,8 @@
 #include <NitroModules/HybridObjectRegistry.hpp>
 
 #include "JHybridPlayerQueueSpec.hpp"
-#include "JFunc_void_std__vector_TrackItem__std__optional_QueueOperation_.hpp"
+#include "JFunc_void_std__vector_Playlist__std__optional_QueueOperation_.hpp"
+#include "JFunc_void_std__string_Playlist_std__optional_QueueOperation_.hpp"
 #include "JHybridTrackPlayerSpec.hpp"
 #include "JFunc_void_TrackItem_std__optional_Reason_.hpp"
 #include "JFunc_void_TrackPlayerState_std__optional_Reason_.hpp"
@@ -35,7 +36,8 @@ int initialize(JavaVM* vm) {
   return facebook::jni::initialize(vm, [] {
     // Register native JNI methods
     margelo::nitro::nitroplayer::JHybridPlayerQueueSpec::registerNatives();
-    margelo::nitro::nitroplayer::JFunc_void_std__vector_TrackItem__std__optional_QueueOperation__cxx::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_std__vector_Playlist__std__optional_QueueOperation__cxx::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_std__string_Playlist_std__optional_QueueOperation__cxx::registerNatives();
     margelo::nitro::nitroplayer::JHybridTrackPlayerSpec::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_TrackItem_std__optional_Reason__cxx::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_TrackPlayerState_std__optional_Reason__cxx::registerNatives();

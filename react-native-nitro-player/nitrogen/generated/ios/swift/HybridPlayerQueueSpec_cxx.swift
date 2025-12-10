@@ -118,9 +118,35 @@ open class HybridPlayerQueueSpec_cxx {
 
   // Methods
   @inline(__always)
-  public final func loadQueue(tracks: bridge.std__vector_TrackItem_) -> bridge.Result_void_ {
+  public final func createPlaylist(name: std.string, description: bridge.std__optional_std__string_, artwork: bridge.std__optional_std__string_) -> bridge.Result_std__string_ {
     do {
-      try self.__implementation.loadQueue(tracks: tracks.map({ __item in __item }))
+      let __result = try self.__implementation.createPlaylist(name: String(name), description: { () -> String? in
+        if bridge.has_value_std__optional_std__string_(description) {
+          let __unwrapped = bridge.get_std__optional_std__string_(description)
+          return String(__unwrapped)
+        } else {
+          return nil
+        }
+      }(), artwork: { () -> String? in
+        if bridge.has_value_std__optional_std__string_(artwork) {
+          let __unwrapped = bridge.get_std__optional_std__string_(artwork)
+          return String(__unwrapped)
+        } else {
+          return nil
+        }
+      }())
+      let __resultCpp = std.string(__result)
+      return bridge.create_Result_std__string_(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_std__string_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func deletePlaylist(playlistId: std.string) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.deletePlaylist(playlistId: String(playlistId))
       return bridge.create_Result_void_()
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
@@ -129,9 +155,30 @@ open class HybridPlayerQueueSpec_cxx {
   }
   
   @inline(__always)
-  public final func loadSingleTrack(track: TrackItem, index: bridge.std__optional_double_) -> bridge.Result_void_ {
+  public final func updatePlaylist(playlistId: std.string, name: bridge.std__optional_std__string_, description: bridge.std__optional_std__string_, artwork: bridge.std__optional_std__string_) -> bridge.Result_void_ {
     do {
-      try self.__implementation.loadSingleTrack(track: track, index: index.value)
+      try self.__implementation.updatePlaylist(playlistId: String(playlistId), name: { () -> String? in
+        if bridge.has_value_std__optional_std__string_(name) {
+          let __unwrapped = bridge.get_std__optional_std__string_(name)
+          return String(__unwrapped)
+        } else {
+          return nil
+        }
+      }(), description: { () -> String? in
+        if bridge.has_value_std__optional_std__string_(description) {
+          let __unwrapped = bridge.get_std__optional_std__string_(description)
+          return String(__unwrapped)
+        } else {
+          return nil
+        }
+      }(), artwork: { () -> String? in
+        if bridge.has_value_std__optional_std__string_(artwork) {
+          let __unwrapped = bridge.get_std__optional_std__string_(artwork)
+          return String(__unwrapped)
+        } else {
+          return nil
+        }
+      }())
       return bridge.create_Result_void_()
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
@@ -140,58 +187,151 @@ open class HybridPlayerQueueSpec_cxx {
   }
   
   @inline(__always)
-  public final func deleteTrack(id: std.string) -> bridge.Result_void_ {
+  public final func getPlaylist(playlistId: std.string) -> bridge.Result_std__variant_nitro__NullType__Playlist__ {
     do {
-      try self.__implementation.deleteTrack(id: String(id))
-      return bridge.create_Result_void_()
+      let __result = try self.__implementation.getPlaylist(playlistId: String(playlistId))
+      let __resultCpp = { () -> bridge.std__variant_nitro__NullType__Playlist_ in
+        switch __result {
+          case .first(let __value):
+            return bridge.create_std__variant_nitro__NullType__Playlist_(margelo.nitro.NullType.null)
+          case .second(let __value):
+            return bridge.create_std__variant_nitro__NullType__Playlist_(__value)
+        }
+      }().variant
+      return bridge.create_Result_std__variant_nitro__NullType__Playlist__(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_void_(__exceptionPtr)
+      return bridge.create_Result_std__variant_nitro__NullType__Playlist__(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func clearQueue() -> bridge.Result_void_ {
+  public final func getAllPlaylists() -> bridge.Result_std__vector_Playlist__ {
     do {
-      try self.__implementation.clearQueue()
-      return bridge.create_Result_void_()
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_void_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
-  public final func getQueue() -> bridge.Result_std__vector_TrackItem__ {
-    do {
-      let __result = try self.__implementation.getQueue()
-      let __resultCpp = { () -> bridge.std__vector_TrackItem_ in
-        var __vector = bridge.create_std__vector_TrackItem_(__result.count)
+      let __result = try self.__implementation.getAllPlaylists()
+      let __resultCpp = { () -> bridge.std__vector_Playlist_ in
+        var __vector = bridge.create_std__vector_Playlist_(__result.count)
         for __item in __result {
           __vector.push_back(__item)
         }
         return __vector
       }()
-      return bridge.create_Result_std__vector_TrackItem__(__resultCpp)
+      return bridge.create_Result_std__vector_Playlist__(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_std__vector_TrackItem__(__exceptionPtr)
+      return bridge.create_Result_std__vector_Playlist__(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func onQueueChanged(callback: bridge.Func_void_std__vector_TrackItem__std__optional_QueueOperation_) -> bridge.Result_void_ {
+  public final func addTrackToPlaylist(playlistId: std.string, track: TrackItem, index: bridge.std__optional_double_) -> bridge.Result_void_ {
     do {
-      try self.__implementation.onQueueChanged(callback: { () -> ([TrackItem], QueueOperation?) -> Void in
-        let __wrappedFunction = bridge.wrap_Func_void_std__vector_TrackItem__std__optional_QueueOperation_(callback)
-        return { (__queue: [TrackItem], __operation: QueueOperation?) -> Void in
-          __wrappedFunction.call({ () -> bridge.std__vector_TrackItem_ in
-            var __vector = bridge.create_std__vector_TrackItem_(__queue.count)
-            for __item in __queue {
+      try self.__implementation.addTrackToPlaylist(playlistId: String(playlistId), track: track, index: index.value)
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func addTracksToPlaylist(playlistId: std.string, tracks: bridge.std__vector_TrackItem_, index: bridge.std__optional_double_) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.addTracksToPlaylist(playlistId: String(playlistId), tracks: tracks.map({ __item in __item }), index: index.value)
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func removeTrackFromPlaylist(playlistId: std.string, trackId: std.string) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.removeTrackFromPlaylist(playlistId: String(playlistId), trackId: String(trackId))
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func reorderTrackInPlaylist(playlistId: std.string, trackId: std.string, newIndex: Double) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.reorderTrackInPlaylist(playlistId: String(playlistId), trackId: String(trackId), newIndex: newIndex)
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func loadPlaylist(playlistId: std.string) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.loadPlaylist(playlistId: String(playlistId))
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func getCurrentPlaylistId() -> bridge.Result_std__variant_nitro__NullType__std__string__ {
+    do {
+      let __result = try self.__implementation.getCurrentPlaylistId()
+      let __resultCpp = { () -> bridge.std__variant_nitro__NullType__std__string_ in
+        switch __result {
+          case .first(let __value):
+            return bridge.create_std__variant_nitro__NullType__std__string_(margelo.nitro.NullType.null)
+          case .second(let __value):
+            return bridge.create_std__variant_nitro__NullType__std__string_(std.string(__value))
+        }
+      }().variant
+      return bridge.create_Result_std__variant_nitro__NullType__std__string__(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_std__variant_nitro__NullType__std__string__(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func onPlaylistsChanged(callback: bridge.Func_void_std__vector_Playlist__std__optional_QueueOperation_) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.onPlaylistsChanged(callback: { () -> ([Playlist], QueueOperation?) -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void_std__vector_Playlist__std__optional_QueueOperation_(callback)
+        return { (__playlists: [Playlist], __operation: QueueOperation?) -> Void in
+          __wrappedFunction.call({ () -> bridge.std__vector_Playlist_ in
+            var __vector = bridge.create_std__vector_Playlist_(__playlists.count)
+            for __item in __playlists {
               __vector.push_back(__item)
             }
             return __vector
           }(), { () -> bridge.std__optional_QueueOperation_ in
+            if let __unwrappedValue = __operation {
+              return bridge.create_std__optional_QueueOperation_(__unwrappedValue)
+            } else {
+              return .init()
+            }
+          }())
+        }
+      }())
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func onPlaylistChanged(callback: bridge.Func_void_std__string_Playlist_std__optional_QueueOperation_) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.onPlaylistChanged(callback: { () -> (String, Playlist, QueueOperation?) -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void_std__string_Playlist_std__optional_QueueOperation_(callback)
+        return { (__playlistId: String, __playlist: Playlist, __operation: QueueOperation?) -> Void in
+          __wrappedFunction.call(std.string(__playlistId), __playlist, { () -> bridge.std__optional_QueueOperation_ in
             if let __unwrappedValue = __operation {
               return bridge.create_std__optional_QueueOperation_(__unwrappedValue)
             } else {

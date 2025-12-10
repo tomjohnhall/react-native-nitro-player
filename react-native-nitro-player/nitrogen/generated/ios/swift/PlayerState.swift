@@ -19,7 +19,7 @@ public extension PlayerState {
   /**
    * Create a new instance of `PlayerState`.
    */
-  init(currentTrack: Variant_NullType_TrackItem?, currentPosition: Double, totalDuration: Double, currentState: TrackPlayerState, queue: [TrackItem], currentIndex: Double) {
+  init(currentTrack: Variant_NullType_TrackItem?, currentPosition: Double, totalDuration: Double, currentState: TrackPlayerState, currentPlaylistId: Variant_NullType_String?, currentIndex: Double) {
     self.init({ () -> bridge.std__optional_std__variant_nitro__NullType__TrackItem__ in
       if let __unwrappedValue = currentTrack {
         return bridge.create_std__optional_std__variant_nitro__NullType__TrackItem__({ () -> bridge.std__variant_nitro__NullType__TrackItem_ in
@@ -33,12 +33,19 @@ public extension PlayerState {
       } else {
         return .init()
       }
-    }(), currentPosition, totalDuration, currentState, { () -> bridge.std__vector_TrackItem_ in
-      var __vector = bridge.create_std__vector_TrackItem_(queue.count)
-      for __item in queue {
-        __vector.push_back(__item)
+    }(), currentPosition, totalDuration, currentState, { () -> bridge.std__optional_std__variant_nitro__NullType__std__string__ in
+      if let __unwrappedValue = currentPlaylistId {
+        return bridge.create_std__optional_std__variant_nitro__NullType__std__string__({ () -> bridge.std__variant_nitro__NullType__std__string_ in
+          switch __unwrappedValue {
+            case .first(let __value):
+              return bridge.create_std__variant_nitro__NullType__std__string_(margelo.nitro.NullType.null)
+            case .second(let __value):
+              return bridge.create_std__variant_nitro__NullType__std__string_(std.string(__value))
+          }
+        }().variant)
+      } else {
+        return .init()
       }
-      return __vector
     }(), currentIndex)
   }
 
@@ -118,19 +125,45 @@ public extension PlayerState {
     }
   }
   
-  var queue: [TrackItem] {
+  var currentPlaylistId: Variant_NullType_String? {
     @inline(__always)
     get {
-      return self.__queue.map({ __item in __item })
+      return { () -> Variant_NullType_String? in
+        if bridge.has_value_std__optional_std__variant_nitro__NullType__std__string__(self.__currentPlaylistId) {
+          let __unwrapped = bridge.get_std__optional_std__variant_nitro__NullType__std__string__(self.__currentPlaylistId)
+          return { () -> Variant_NullType_String in
+            let __variant = bridge.std__variant_nitro__NullType__std__string_(__unwrapped)
+            switch __variant.index() {
+              case 0:
+                let __actual = __variant.get_0()
+                return .first(NullType.null)
+              case 1:
+                let __actual = __variant.get_1()
+                return .second(String(__actual))
+              default:
+                fatalError("Variant can never have index \(__variant.index())!")
+            }
+          }()
+        } else {
+          return nil
+        }
+      }()
     }
     @inline(__always)
     set {
-      self.__queue = { () -> bridge.std__vector_TrackItem_ in
-        var __vector = bridge.create_std__vector_TrackItem_(newValue.count)
-        for __item in newValue {
-          __vector.push_back(__item)
+      self.__currentPlaylistId = { () -> bridge.std__optional_std__variant_nitro__NullType__std__string__ in
+        if let __unwrappedValue = newValue {
+          return bridge.create_std__optional_std__variant_nitro__NullType__std__string__({ () -> bridge.std__variant_nitro__NullType__std__string_ in
+            switch __unwrappedValue {
+              case .first(let __value):
+                return bridge.create_std__variant_nitro__NullType__std__string_(margelo.nitro.NullType.null)
+              case .second(let __value):
+                return bridge.create_std__variant_nitro__NullType__std__string_(std.string(__value))
+            }
+          }().variant)
+        } else {
+          return .init()
         }
-        return __vector
       }()
     }
   }

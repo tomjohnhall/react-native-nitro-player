@@ -37,6 +37,8 @@ target_sources(
   ../nitrogen/generated/shared/c++/HybridTrackPlayerSpec.cpp
   # Android-specific Nitrogen C++ sources
   ../nitrogen/generated/android/c++/JHybridPlayerQueueSpec.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_Playlist.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_String.cpp
   ../nitrogen/generated/android/c++/JHybridTrackPlayerSpec.cpp
   ../nitrogen/generated/android/c++/JVariant_NullType_TrackItem.cpp
 )

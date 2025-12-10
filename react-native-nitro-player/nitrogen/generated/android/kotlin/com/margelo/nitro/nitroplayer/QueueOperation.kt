@@ -18,5 +18,6 @@ import com.facebook.proguard.annotations.DoNotStrip
 enum class QueueOperation(@DoNotStrip @Keep val value: Int) {
   ADD(0),
   REMOVE(1),
-  CLEAR(2);
+  CLEAR(2),
+  UPDATE(3);
 }

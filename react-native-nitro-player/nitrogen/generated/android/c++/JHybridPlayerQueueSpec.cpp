@@ -7,21 +7,31 @@
 
 #include "JHybridPlayerQueueSpec.hpp"
 
+// Forward declaration of `Playlist` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct Playlist; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 
+#include <string>
+#include <NitroModules/Null.hpp>
+#include "Playlist.hpp"
+#include <variant>
+#include "JVariant_NullType_Playlist.hpp"
+#include <NitroModules/JNull.hpp>
+#include "JPlaylist.hpp"
+#include <optional>
+#include "JVariant_NullType_String.hpp"
 #include "TrackItem.hpp"
 #include <vector>
 #include "JTrackItem.hpp"
-#include <string>
-#include <optional>
 #include "QueueOperation.hpp"
 #include <functional>
-#include "JFunc_void_std__vector_TrackItem__std__optional_QueueOperation_.hpp"
+#include "JFunc_void_std__vector_Playlist__std__optional_QueueOperation_.hpp"
 #include <NitroModules/JNICallable.hpp>
 #include "JQueueOperation.hpp"
+#include "JFunc_void_std__string_Playlist_std__optional_QueueOperation_.hpp"
 
 namespace margelo::nitro::nitroplayer {
 
@@ -55,37 +65,30 @@ namespace margelo::nitro::nitroplayer {
   
 
   // Methods
-  void JHybridPlayerQueueSpec::loadQueue(const std::vector<TrackItem>& tracks) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JArrayClass<JTrackItem>> /* tracks */)>("loadQueue");
-    method(_javaPart, [&]() {
-      size_t __size = tracks.size();
-      jni::local_ref<jni::JArrayClass<JTrackItem>> __array = jni::JArrayClass<JTrackItem>::newArray(__size);
-      for (size_t __i = 0; __i < __size; __i++) {
-        const auto& __element = tracks[__i];
-        auto __elementJni = JTrackItem::fromCpp(__element);
-        __array->setElement(__i, *__elementJni);
-      }
-      return __array;
-    }());
+  std::string JHybridPlayerQueueSpec::createPlaylist(const std::string& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JString>(jni::alias_ref<jni::JString> /* name */, jni::alias_ref<jni::JString> /* description */, jni::alias_ref<jni::JString> /* artwork */)>("createPlaylist");
+    auto __result = method(_javaPart, jni::make_jstring(name), description.has_value() ? jni::make_jstring(description.value()) : nullptr, artwork.has_value() ? jni::make_jstring(artwork.value()) : nullptr);
+    return __result->toStdString();
   }
-  void JHybridPlayerQueueSpec::loadSingleTrack(const TrackItem& track, std::optional<double> index) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JTrackItem> /* track */, jni::alias_ref<jni::JDouble> /* index */)>("loadSingleTrack");
-    method(_javaPart, JTrackItem::fromCpp(track), index.has_value() ? jni::JDouble::valueOf(index.value()) : nullptr);
+  void JHybridPlayerQueueSpec::deletePlaylist(const std::string& playlistId) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */)>("deletePlaylist");
+    method(_javaPart, jni::make_jstring(playlistId));
   }
-  void JHybridPlayerQueueSpec::deleteTrack(const std::string& id) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* id */)>("deleteTrack");
-    method(_javaPart, jni::make_jstring(id));
+  void JHybridPlayerQueueSpec::updatePlaylist(const std::string& playlistId, const std::optional<std::string>& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JString> /* name */, jni::alias_ref<jni::JString> /* description */, jni::alias_ref<jni::JString> /* artwork */)>("updatePlaylist");
+    method(_javaPart, jni::make_jstring(playlistId), name.has_value() ? jni::make_jstring(name.value()) : nullptr, description.has_value() ? jni::make_jstring(description.value()) : nullptr, artwork.has_value() ? jni::make_jstring(artwork.value()) : nullptr);
   }
-  void JHybridPlayerQueueSpec::clearQueue() {
-    static const auto method = javaClassStatic()->getMethod<void()>("clearQueue");
-    method(_javaPart);
+  std::variant<nitro::NullType, Playlist> JHybridPlayerQueueSpec::getPlaylist(const std::string& playlistId) {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_Playlist>(jni::alias_ref<jni::JString> /* playlistId */)>("getPlaylist");
+    auto __result = method(_javaPart, jni::make_jstring(playlistId));
+    return __result->toCpp();
   }
-  std::vector<TrackItem> JHybridPlayerQueueSpec::getQueue() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JTrackItem>>()>("getQueue");
+  std::vector<Playlist> JHybridPlayerQueueSpec::getAllPlaylists() {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JPlaylist>>()>("getAllPlaylists");
     auto __result = method(_javaPart);
     return [&]() {
       size_t __size = __result->size();
-      std::vector<TrackItem> __vector;
+      std::vector<Playlist> __vector;
       __vector.reserve(__size);
       for (size_t __i = 0; __i < __size; __i++) {
         auto __element = __result->getElement(__i);
@@ -94,9 +97,47 @@ namespace margelo::nitro::nitroplayer {
       return __vector;
     }();
   }
-  void JHybridPlayerQueueSpec::onQueueChanged(const std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>& callback) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__vector_TrackItem__std__optional_QueueOperation_::javaobject> /* callback */)>("onQueueChanged_cxx");
-    method(_javaPart, JFunc_void_std__vector_TrackItem__std__optional_QueueOperation__cxx::fromCpp(callback));
+  void JHybridPlayerQueueSpec::addTrackToPlaylist(const std::string& playlistId, const TrackItem& track, std::optional<double> index) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<JTrackItem> /* track */, jni::alias_ref<jni::JDouble> /* index */)>("addTrackToPlaylist");
+    method(_javaPart, jni::make_jstring(playlistId), JTrackItem::fromCpp(track), index.has_value() ? jni::JDouble::valueOf(index.value()) : nullptr);
+  }
+  void JHybridPlayerQueueSpec::addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JArrayClass<JTrackItem>> /* tracks */, jni::alias_ref<jni::JDouble> /* index */)>("addTracksToPlaylist");
+    method(_javaPart, jni::make_jstring(playlistId), [&]() {
+      size_t __size = tracks.size();
+      jni::local_ref<jni::JArrayClass<JTrackItem>> __array = jni::JArrayClass<JTrackItem>::newArray(__size);
+      for (size_t __i = 0; __i < __size; __i++) {
+        const auto& __element = tracks[__i];
+        auto __elementJni = JTrackItem::fromCpp(__element);
+        __array->setElement(__i, *__elementJni);
+      }
+      return __array;
+    }(), index.has_value() ? jni::JDouble::valueOf(index.value()) : nullptr);
+  }
+  void JHybridPlayerQueueSpec::removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JString> /* trackId */)>("removeTrackFromPlaylist");
+    method(_javaPart, jni::make_jstring(playlistId), jni::make_jstring(trackId));
+  }
+  void JHybridPlayerQueueSpec::reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JString> /* trackId */, double /* newIndex */)>("reorderTrackInPlaylist");
+    method(_javaPart, jni::make_jstring(playlistId), jni::make_jstring(trackId), newIndex);
+  }
+  void JHybridPlayerQueueSpec::loadPlaylist(const std::string& playlistId) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */)>("loadPlaylist");
+    method(_javaPart, jni::make_jstring(playlistId));
+  }
+  std::variant<nitro::NullType, std::string> JHybridPlayerQueueSpec::getCurrentPlaylistId() {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_String>()>("getCurrentPlaylistId");
+    auto __result = method(_javaPart);
+    return __result->toCpp();
+  }
+  void JHybridPlayerQueueSpec::onPlaylistsChanged(const std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>& callback) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__vector_Playlist__std__optional_QueueOperation_::javaobject> /* callback */)>("onPlaylistsChanged_cxx");
+    method(_javaPart, JFunc_void_std__vector_Playlist__std__optional_QueueOperation__cxx::fromCpp(callback));
+  }
+  void JHybridPlayerQueueSpec::onPlaylistChanged(const std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>& callback) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__string_Playlist_std__optional_QueueOperation_::javaobject> /* callback */)>("onPlaylistChanged_cxx");
+    method(_javaPart, JFunc_void_std__string_Playlist_std__optional_QueueOperation__cxx::fromCpp(callback));
   }
 
 } // namespace margelo::nitro::nitroplayer

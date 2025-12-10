@@ -30,7 +30,6 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include <optional>
 #include <string>
 #include "TrackPlayerState.hpp"
-#include <vector>
 #include "PlayerConfig.hpp"
 #include "Reason.hpp"
 #include <functional>

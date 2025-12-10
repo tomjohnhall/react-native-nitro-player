@@ -28,9 +28,9 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include <NitroModules/JNull.hpp>
 #include "JTrackItem.hpp"
 #include <string>
+#include "JVariant_NullType_String.hpp"
 #include "TrackPlayerState.hpp"
 #include "JTrackPlayerState.hpp"
-#include <vector>
 #include "PlayerConfig.hpp"
 #include "JPlayerConfig.hpp"
 #include "Reason.hpp"

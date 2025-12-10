@@ -19,8 +19,21 @@ public extension TrackItem {
   /**
    * Create a new instance of `TrackItem`.
    */
-  init(id: String, title: String, artist: String, album: String, duration: Double, url: String, artwork: String) {
-    self.init(std.string(id), std.string(title), std.string(artist), std.string(album), duration, std.string(url), std.string(artwork))
+  init(id: String, title: String, artist: String, album: String, duration: Double, url: String, artwork: Variant_NullType_String?) {
+    self.init(std.string(id), std.string(title), std.string(artist), std.string(album), duration, std.string(url), { () -> bridge.std__optional_std__variant_nitro__NullType__std__string__ in
+      if let __unwrappedValue = artwork {
+        return bridge.create_std__optional_std__variant_nitro__NullType__std__string__({ () -> bridge.std__variant_nitro__NullType__std__string_ in
+          switch __unwrappedValue {
+            case .first(let __value):
+              return bridge.create_std__variant_nitro__NullType__std__string_(margelo.nitro.NullType.null)
+            case .second(let __value):
+              return bridge.create_std__variant_nitro__NullType__std__string_(std.string(__value))
+          }
+        }().variant)
+      } else {
+        return .init()
+      }
+    }())
   }
 
   var id: String {
@@ -89,14 +102,46 @@ public extension TrackItem {
     }
   }
   
-  var artwork: String {
+  var artwork: Variant_NullType_String? {
     @inline(__always)
     get {
-      return String(self.__artwork)
+      return { () -> Variant_NullType_String? in
+        if bridge.has_value_std__optional_std__variant_nitro__NullType__std__string__(self.__artwork) {
+          let __unwrapped = bridge.get_std__optional_std__variant_nitro__NullType__std__string__(self.__artwork)
+          return { () -> Variant_NullType_String in
+            let __variant = bridge.std__variant_nitro__NullType__std__string_(__unwrapped)
+            switch __variant.index() {
+              case 0:
+                let __actual = __variant.get_0()
+                return .first(NullType.null)
+              case 1:
+                let __actual = __variant.get_1()
+                return .second(String(__actual))
+              default:
+                fatalError("Variant can never have index \(__variant.index())!")
+            }
+          }()
+        } else {
+          return nil
+        }
+      }()
     }
     @inline(__always)
     set {
-      self.__artwork = std.string(newValue)
+      self.__artwork = { () -> bridge.std__optional_std__variant_nitro__NullType__std__string__ in
+        if let __unwrappedValue = newValue {
+          return bridge.create_std__optional_std__variant_nitro__NullType__std__string__({ () -> bridge.std__variant_nitro__NullType__std__string_ in
+            switch __unwrappedValue {
+              case .first(let __value):
+                return bridge.create_std__variant_nitro__NullType__std__string_(margelo.nitro.NullType.null)
+              case .second(let __value):
+                return bridge.create_std__variant_nitro__NullType__std__string_(std.string(__value))
+            }
+          }().variant)
+        } else {
+          return .init()
+        }
+      }()
     }
   }
 }

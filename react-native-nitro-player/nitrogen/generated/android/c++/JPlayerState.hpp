@@ -12,6 +12,7 @@
 
 #include "JTrackItem.hpp"
 #include "JTrackPlayerState.hpp"
+#include "JVariant_NullType_String.hpp"
 #include "JVariant_NullType_TrackItem.hpp"
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
@@ -20,7 +21,6 @@
 #include <optional>
 #include <string>
 #include <variant>
-#include <vector>
 
 namespace margelo::nitro::nitroplayer {
 
@@ -49,8 +49,8 @@ namespace margelo::nitro::nitroplayer {
       double totalDuration = this->getFieldValue(fieldTotalDuration);
       static const auto fieldCurrentState = clazz->getField<JTrackPlayerState>("currentState");
       jni::local_ref<JTrackPlayerState> currentState = this->getFieldValue(fieldCurrentState);
-      static const auto fieldQueue = clazz->getField<jni::JArrayClass<JTrackItem>>("queue");
-      jni::local_ref<jni::JArrayClass<JTrackItem>> queue = this->getFieldValue(fieldQueue);
+      static const auto fieldCurrentPlaylistId = clazz->getField<JVariant_NullType_String>("currentPlaylistId");
+      jni::local_ref<JVariant_NullType_String> currentPlaylistId = this->getFieldValue(fieldCurrentPlaylistId);
       static const auto fieldCurrentIndex = clazz->getField<double>("currentIndex");
       double currentIndex = this->getFieldValue(fieldCurrentIndex);
       return PlayerState(
@@ -58,16 +58,7 @@ namespace margelo::nitro::nitroplayer {
         currentPosition,
         totalDuration,
         currentState->toCpp(),
-        [&]() {
-          size_t __size = queue->size();
-          std::vector<TrackItem> __vector;
-          __vector.reserve(__size);
-          for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = queue->getElement(__i);
-            __vector.push_back(__element->toCpp());
-          }
-          return __vector;
-        }(),
+        currentPlaylistId != nullptr ? std::make_optional(currentPlaylistId->toCpp()) : std::nullopt,
         currentIndex
       );
     }
@@ -78,7 +69,7 @@ namespace margelo::nitro::nitroplayer {
      */
     [[maybe_unused]]
     static jni::local_ref<JPlayerState::javaobject> fromCpp(const PlayerState& value) {
-      using JSignature = JPlayerState(jni::alias_ref<JVariant_NullType_TrackItem>, double, double, jni::alias_ref<JTrackPlayerState>, jni::alias_ref<jni::JArrayClass<JTrackItem>>, double);
+      using JSignature = JPlayerState(jni::alias_ref<JVariant_NullType_TrackItem>, double, double, jni::alias_ref<JTrackPlayerState>, jni::alias_ref<JVariant_NullType_String>, double);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -87,16 +78,7 @@ namespace margelo::nitro::nitroplayer {
         value.currentPosition,
         value.totalDuration,
         JTrackPlayerState::fromCpp(value.currentState),
-        [&]() {
-          size_t __size = value.queue.size();
-          jni::local_ref<jni::JArrayClass<JTrackItem>> __array = jni::JArrayClass<JTrackItem>::newArray(__size);
-          for (size_t __i = 0; __i < __size; __i++) {
-            const auto& __element = value.queue[__i];
-            auto __elementJni = JTrackItem::fromCpp(__element);
-            __array->setElement(__i, *__elementJni);
-          }
-          return __array;
-        }(),
+        value.currentPlaylistId.has_value() ? JVariant_NullType_String::fromCpp(value.currentPlaylistId.value()) : nullptr,
         value.currentIndex
       );
     }

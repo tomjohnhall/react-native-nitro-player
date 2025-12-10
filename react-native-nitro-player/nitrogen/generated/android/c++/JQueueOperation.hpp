@@ -44,6 +44,7 @@ namespace margelo::nitro::nitroplayer {
       static const auto fieldADD = clazz->getStaticField<JQueueOperation>("ADD");
       static const auto fieldREMOVE = clazz->getStaticField<JQueueOperation>("REMOVE");
       static const auto fieldCLEAR = clazz->getStaticField<JQueueOperation>("CLEAR");
+      static const auto fieldUPDATE = clazz->getStaticField<JQueueOperation>("UPDATE");
       
       switch (value) {
         case QueueOperation::ADD:
@@ -52,6 +53,8 @@ namespace margelo::nitro::nitroplayer {
           return clazz->getStaticFieldValue(fieldREMOVE);
         case QueueOperation::CLEAR:
           return clazz->getStaticFieldValue(fieldCLEAR);
+        case QueueOperation::UPDATE:
+          return clazz->getStaticFieldValue(fieldUPDATE);
         default:
           std::string stringValue = std::to_string(static_cast<int>(value));
           throw std::invalid_argument("Invalid enum value (" + stringValue + "!");

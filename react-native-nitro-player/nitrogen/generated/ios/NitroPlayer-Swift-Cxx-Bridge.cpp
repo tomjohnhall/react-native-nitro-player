@@ -15,11 +15,19 @@
 
 namespace margelo::nitro::nitroplayer::bridge::swift {
 
-  // pragma MARK: std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>
-  Func_void_std__vector_TrackItem__std__optional_QueueOperation_ create_Func_void_std__vector_TrackItem__std__optional_QueueOperation_(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_std__vector_TrackItem__std__optional_QueueOperation_::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const std::vector<TrackItem>& queue, std::optional<QueueOperation> operation) mutable -> void {
-      swiftClosure.call(queue, operation);
+  // pragma MARK: std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>
+  Func_void_std__vector_Playlist__std__optional_QueueOperation_ create_Func_void_std__vector_Playlist__std__optional_QueueOperation_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__vector_Playlist__std__optional_QueueOperation_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::vector<Playlist>& playlists, std::optional<QueueOperation> operation) mutable -> void {
+      swiftClosure.call(playlists, operation);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>
+  Func_void_std__string_Playlist_std__optional_QueueOperation_ create_Func_void_std__string_Playlist_std__optional_QueueOperation_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__string_Playlist_std__optional_QueueOperation_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::string& playlistId, const Playlist& playlist, std::optional<QueueOperation> operation) mutable -> void {
+      swiftClosure.call(playlistId, playlist, operation);
     };
   }
   

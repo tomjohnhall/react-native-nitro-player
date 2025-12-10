@@ -13,15 +13,20 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
+// Forward declaration of `Playlist` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct Playlist; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 
-#include "TrackItem.hpp"
-#include <vector>
-#include <optional>
 #include <string>
+#include <optional>
+#include <NitroModules/Null.hpp>
+#include "Playlist.hpp"
+#include <variant>
+#include <vector>
+#include "TrackItem.hpp"
 #include "QueueOperation.hpp"
 #include <functional>
 
@@ -56,12 +61,19 @@ namespace margelo::nitro::nitroplayer {
 
     public:
       // Methods
-      virtual void loadQueue(const std::vector<TrackItem>& tracks) = 0;
-      virtual void loadSingleTrack(const TrackItem& track, std::optional<double> index) = 0;
-      virtual void deleteTrack(const std::string& id) = 0;
-      virtual void clearQueue() = 0;
-      virtual std::vector<TrackItem> getQueue() = 0;
-      virtual void onQueueChanged(const std::function<void(const std::vector<TrackItem>& /* queue */, std::optional<QueueOperation> /* operation */)>& callback) = 0;
+      virtual std::string createPlaylist(const std::string& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) = 0;
+      virtual void deletePlaylist(const std::string& playlistId) = 0;
+      virtual void updatePlaylist(const std::string& playlistId, const std::optional<std::string>& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) = 0;
+      virtual std::variant<nitro::NullType, Playlist> getPlaylist(const std::string& playlistId) = 0;
+      virtual std::vector<Playlist> getAllPlaylists() = 0;
+      virtual void addTrackToPlaylist(const std::string& playlistId, const TrackItem& track, std::optional<double> index) = 0;
+      virtual void addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) = 0;
+      virtual void removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) = 0;
+      virtual void reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) = 0;
+      virtual void loadPlaylist(const std::string& playlistId) = 0;
+      virtual std::variant<nitro::NullType, std::string> getCurrentPlaylistId() = 0;
+      virtual void onPlaylistsChanged(const std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>& callback) = 0;
+      virtual void onPlaylistChanged(const std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>& callback) = 0;
 
     protected:
       // Hybrid Setup

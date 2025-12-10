@@ -23,6 +23,8 @@ public extension QueueOperation {
         self = .remove
       case "clear":
         self = .clear
+      case "update":
+        self = .update
       default:
         return nil
     }
@@ -39,6 +41,8 @@ public extension QueueOperation {
         return "remove"
       case .clear:
         return "clear"
+      case .update:
+        return "update"
     }
   }
 }

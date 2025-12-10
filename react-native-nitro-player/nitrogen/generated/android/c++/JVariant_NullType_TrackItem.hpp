@@ -16,6 +16,8 @@
 #include <NitroModules/JNull.hpp>
 #include "JTrackItem.hpp"
 #include <string>
+#include <optional>
+#include "JVariant_NullType_String.hpp"
 
 namespace margelo::nitro::nitroplayer {
 

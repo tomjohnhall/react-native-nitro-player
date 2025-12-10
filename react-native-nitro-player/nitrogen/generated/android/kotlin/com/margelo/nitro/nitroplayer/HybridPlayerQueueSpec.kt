@@ -10,6 +10,7 @@ package com.margelo.nitro.nitroplayer
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
+import com.margelo.nitro.core.NullType
 import com.margelo.nitro.core.HybridObject
 
 /**
@@ -47,30 +48,63 @@ abstract class HybridPlayerQueueSpec: HybridObject() {
   // Methods
   @DoNotStrip
   @Keep
-  abstract fun loadQueue(tracks: Array<TrackItem>): Unit
+  abstract fun createPlaylist(name: String, description: String?, artwork: String?): String
   
   @DoNotStrip
   @Keep
-  abstract fun loadSingleTrack(track: TrackItem, index: Double?): Unit
+  abstract fun deletePlaylist(playlistId: String): Unit
   
   @DoNotStrip
   @Keep
-  abstract fun deleteTrack(id: String): Unit
+  abstract fun updatePlaylist(playlistId: String, name: String?, description: String?, artwork: String?): Unit
   
   @DoNotStrip
   @Keep
-  abstract fun clearQueue(): Unit
+  abstract fun getPlaylist(playlistId: String): Variant_NullType_Playlist
   
   @DoNotStrip
   @Keep
-  abstract fun getQueue(): Array<TrackItem>
-  
-  abstract fun onQueueChanged(callback: (queue: Array<TrackItem>, operation: QueueOperation?) -> Unit): Unit
+  abstract fun getAllPlaylists(): Array<Playlist>
   
   @DoNotStrip
   @Keep
-  private fun onQueueChanged_cxx(callback: Func_void_std__vector_TrackItem__std__optional_QueueOperation_): Unit {
-    val __result = onQueueChanged(callback)
+  abstract fun addTrackToPlaylist(playlistId: String, track: TrackItem, index: Double?): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun addTracksToPlaylist(playlistId: String, tracks: Array<TrackItem>, index: Double?): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun removeTrackFromPlaylist(playlistId: String, trackId: String): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun loadPlaylist(playlistId: String): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getCurrentPlaylistId(): Variant_NullType_String
+  
+  abstract fun onPlaylistsChanged(callback: (playlists: Array<Playlist>, operation: QueueOperation?) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onPlaylistsChanged_cxx(callback: Func_void_std__vector_Playlist__std__optional_QueueOperation_): Unit {
+    val __result = onPlaylistsChanged(callback)
+    return __result
+  }
+  
+  abstract fun onPlaylistChanged(callback: (playlistId: String, playlist: Playlist, operation: QueueOperation?) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onPlaylistChanged_cxx(callback: Func_void_std__string_Playlist_std__optional_QueueOperation_): Unit {
+    val __result = onPlaylistChanged(callback)
     return __result
   }
 
