@@ -25,6 +25,9 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   func onPlaybackStateChange(callback: @escaping (_ state: TrackPlayerState, _ reason: Reason?) -> Void) throws -> Void
   func onSeek(callback: @escaping (_ position: Double, _ totalDuration: Double) -> Void) throws -> Void
   func onPlaybackProgressChange(callback: @escaping (_ position: Double, _ totalDuration: Double, _ isManuallySeeked: Bool?) -> Void) throws -> Void
+  func setAudioOutput(output: AudioOutput) throws -> Void
+  func getAudioOutput() throws -> AudioOutput
+  func isAndroidAutoConnected() throws -> Bool
 }
 
 public extension HybridTrackPlayerSpec_protocol {

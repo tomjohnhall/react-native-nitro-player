@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -31,11 +32,11 @@ class MediaSessionManager(
     private var mediaSession: MediaSession? = null
     private var notificationManager: NotificationManager? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val artworkCache = mutableMapOf<String, Bitmap>()
     
     private var androidAutoEnabled: Boolean = false
     private var carPlayEnabled: Boolean = false
     private var showInNotification: Boolean = true
-    private var showInLockScreen: Boolean = true
     
     companion object {
         private const val NOTIFICATION_ID = 1001
@@ -55,8 +56,7 @@ class MediaSessionManager(
     fun configure(
         androidAutoEnabled: Boolean?,
         carPlayEnabled: Boolean?,
-        showInNotification: Boolean?,
-        showInLockScreen: Boolean?
+        showInNotification: Boolean?
     ) {
         androidAutoEnabled?.let { this.androidAutoEnabled = it }
         carPlayEnabled?.let { this.carPlayEnabled = it }
@@ -68,18 +68,55 @@ class MediaSessionManager(
                 hideNotification()
             }
         }
-        showInLockScreen?.let { this.showInLockScreen = it }
     }
     
     private fun setupMediaSession() {
         try {
-            mediaSession = MediaSession.Builder(context, player).build()
+            mediaSession = MediaSession.Builder(context, player)
+                .build()
+            // MediaSession is active by default in Media3
+            updateMediaSessionMetadata()
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
     
+    private fun updateMediaSessionMetadata() {
+        // MediaSession will automatically use the metadata from player's current MediaItem
+        // No need to manually update here as TrackPlayerCore already sets metadata
+    }
+    
+    private suspend fun loadArtworkBitmap(artworkUrl: String?): Bitmap? {
+        if (artworkUrl.isNullOrEmpty()) return null
+        
+        // Check cache first
+        artworkCache[artworkUrl]?.let { return it }
+        
+        return try {
+            val bitmap = withContext(Dispatchers.IO) {
+                val url = URL(artworkUrl)
+                BitmapFactory.decodeStream(url.openConnection().getInputStream())
+            }
+            // Cache the bitmap
+            if (bitmap != null) {
+                artworkCache[artworkUrl] = bitmap
+            }
+            bitmap
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+    
+    private fun bitmapToByteArray(bitmap: Bitmap): ByteArray {
+        val stream = java.io.ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        return stream.toByteArray()
+    }
+    
     private fun createNotificationChannel() {
+        notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
@@ -88,12 +125,10 @@ class MediaSessionManager(
             ).apply {
                 description = "Media playback controls"
                 setShowBadge(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
             
-            notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager?.createNotificationChannel(channel)
-        } else {
-            notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         }
     }
     
@@ -127,8 +162,11 @@ class MediaSessionManager(
             .setSubText(track?.album ?: "")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentIntent(contentIntent)
-            .setVisibility(if (showInLockScreen) NotificationCompat.VISIBILITY_PUBLIC else NotificationCompat.VISIBILITY_PRIVATE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(player.isPlaying)
+            .setShowWhen(false)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setStyle(
                 androidx.media.app.NotificationCompat.MediaStyle()
                     .setMediaSession(mediaSession.sessionCompatToken)
@@ -162,18 +200,13 @@ class MediaSessionManager(
             createMediaAction(ACTION_NEXT)
         )
         
-        // Load artwork asynchronously
+        // Load artwork asynchronously and update notification
         track?.artwork?.let { artworkUrl ->
             scope.launch {
-                try {
-                    val bitmap = withContext(Dispatchers.IO) {
-                        val url = URL(artworkUrl)
-                        BitmapFactory.decodeStream(url.openConnection().getInputStream())
-                    }
+                val bitmap = loadArtworkBitmap(artworkUrl)
+                if (bitmap != null) {
                     builder.setLargeIcon(bitmap)
                     notificationManager?.notify(NOTIFICATION_ID, builder.build())
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
             }
         }
@@ -205,7 +238,16 @@ class MediaSessionManager(
     }
     
     fun onTrackChanged() {
-        updateNotification()
+        // Preload artwork for better notification display
+        val currentTrack = getCurrentTrack()
+        if (currentTrack != null) {
+            scope.launch {
+                loadArtworkBitmap(currentTrack.artwork)
+                updateNotification()
+            }
+        } else {
+            updateNotification()
+        }
     }
     
     fun onPlaybackStateChanged() {
@@ -216,6 +258,7 @@ class MediaSessionManager(
         hideNotification()
         mediaSession?.release()
         mediaSession = null
+        artworkCache.clear()
     }
 }
 

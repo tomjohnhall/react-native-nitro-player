@@ -23,6 +23,8 @@ namespace margelo::nitro::nitroplayer { struct TrackItem; }
 namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
+// Forward declaration of `AudioOutput` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class AudioOutput; }
 
 #include "PlayerState.hpp"
 #include "PlayerConfig.hpp"
@@ -31,6 +33,7 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include <optional>
 #include <functional>
 #include "TrackPlayerState.hpp"
+#include "AudioOutput.hpp"
 
 namespace margelo::nitro::nitroplayer {
 
@@ -74,6 +77,9 @@ namespace margelo::nitro::nitroplayer {
       virtual void onPlaybackStateChange(const std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>& callback) = 0;
       virtual void onSeek(const std::function<void(double /* position */, double /* totalDuration */)>& callback) = 0;
       virtual void onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) = 0;
+      virtual void setAudioOutput(AudioOutput output) = 0;
+      virtual AudioOutput getAudioOutput() = 0;
+      virtual bool isAndroidAutoConnected() = 0;
 
     protected:
       // Hybrid Setup

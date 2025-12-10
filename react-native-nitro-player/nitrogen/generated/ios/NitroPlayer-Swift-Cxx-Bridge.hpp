@@ -8,6 +8,8 @@
 #pragma once
 
 // Forward declarations of C++ defined types
+// Forward declaration of `AudioOutput` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class AudioOutput; }
 // Forward declaration of `HybridPlayerQueueSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
 // Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
@@ -30,6 +32,7 @@ namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 
 // Include C++ defined types
+#include "AudioOutput.hpp"
 #include "HybridPlayerQueueSpec.hpp"
 #include "HybridTrackPlayerSpec.hpp"
 #include "PlayerState.hpp"
@@ -327,6 +330,24 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline Result_PlayerState_ create_Result_PlayerState_(const std::exception_ptr& error) noexcept {
     return Result<PlayerState>::withError(error);
+  }
+  
+  // pragma MARK: Result<AudioOutput>
+  using Result_AudioOutput_ = Result<AudioOutput>;
+  inline Result_AudioOutput_ create_Result_AudioOutput_(AudioOutput value) noexcept {
+    return Result<AudioOutput>::withValue(std::move(value));
+  }
+  inline Result_AudioOutput_ create_Result_AudioOutput_(const std::exception_ptr& error) noexcept {
+    return Result<AudioOutput>::withError(error);
+  }
+  
+  // pragma MARK: Result<bool>
+  using Result_bool_ = Result<bool>;
+  inline Result_bool_ create_Result_bool_(bool value) noexcept {
+    return Result<bool>::withValue(std::move(value));
+  }
+  inline Result_bool_ create_Result_bool_(const std::exception_ptr& error) noexcept {
+    return Result<bool>::withError(error);
   }
 
 } // namespace margelo::nitro::nitroplayer::bridge::swift

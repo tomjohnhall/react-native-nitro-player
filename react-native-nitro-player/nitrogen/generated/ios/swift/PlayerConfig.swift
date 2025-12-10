@@ -19,7 +19,7 @@ public extension PlayerConfig {
   /**
    * Create a new instance of `PlayerConfig`.
    */
-  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, showInLockScreen: Bool?) {
+  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?) {
     self.init({ () -> bridge.std__optional_bool_ in
       if let __unwrappedValue = androidAutoEnabled {
         return bridge.create_std__optional_bool_(__unwrappedValue)
@@ -34,12 +34,6 @@ public extension PlayerConfig {
       }
     }(), { () -> bridge.std__optional_bool_ in
       if let __unwrappedValue = showInNotification {
-        return bridge.create_std__optional_bool_(__unwrappedValue)
-      } else {
-        return .init()
-      }
-    }(), { () -> bridge.std__optional_bool_ in
-      if let __unwrappedValue = showInLockScreen {
         return bridge.create_std__optional_bool_(__unwrappedValue)
       } else {
         return .init()
@@ -110,30 +104,6 @@ public extension PlayerConfig {
     @inline(__always)
     set {
       self.__showInNotification = { () -> bridge.std__optional_bool_ in
-        if let __unwrappedValue = newValue {
-          return bridge.create_std__optional_bool_(__unwrappedValue)
-        } else {
-          return .init()
-        }
-      }()
-    }
-  }
-  
-  var showInLockScreen: Bool? {
-    @inline(__always)
-    get {
-      return { () -> Bool? in
-        if bridge.has_value_std__optional_bool_(self.__showInLockScreen) {
-          let __unwrapped = bridge.get_std__optional_bool_(self.__showInLockScreen)
-          return __unwrapped
-        } else {
-          return nil
-        }
-      }()
-    }
-    @inline(__always)
-    set {
-      self.__showInLockScreen = { () -> bridge.std__optional_bool_ in
         if let __unwrappedValue = newValue {
           return bridge.create_std__optional_bool_(__unwrappedValue)
         } else {

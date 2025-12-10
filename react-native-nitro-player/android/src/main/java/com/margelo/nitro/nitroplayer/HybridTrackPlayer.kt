@@ -72,8 +72,22 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         core.configure(
             androidAutoEnabled = config.androidAutoEnabled,
             carPlayEnabled = config.carPlayEnabled,
-            showInNotification = config.showInNotification,
-            showInLockScreen = config.showInLockScreen
+            showInNotification = config.showInNotification
         )
+    }
+    
+    @Keep
+    override fun setAudioOutput(output: AudioOutput) {
+        core.setAudioOutput(output)
+    }
+    
+    @Keep
+    override fun getAudioOutput(): AudioOutput {
+        return core.getAudioOutput()
+    }
+    
+    @Keep
+    override fun isAndroidAutoConnected(): Boolean {
+        return core.isAndroidAutoConnected()
     }
 }

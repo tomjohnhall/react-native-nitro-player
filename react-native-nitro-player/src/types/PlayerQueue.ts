@@ -28,5 +28,6 @@ export interface PlayerConfig {
     androidAutoEnabled?: boolean;
     carPlayEnabled?: boolean;
     showInNotification?: boolean;
-    showInLockScreen?: boolean;
 }
+
+export type AudioOutput = 'PHONE' | 'CAR' | 'AUTO';

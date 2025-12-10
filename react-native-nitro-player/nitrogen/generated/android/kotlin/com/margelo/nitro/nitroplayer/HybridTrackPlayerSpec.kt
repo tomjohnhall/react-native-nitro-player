@@ -108,6 +108,18 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
     val __result = onPlaybackProgressChange(callback)
     return __result
   }
+  
+  @DoNotStrip
+  @Keep
+  abstract fun setAudioOutput(output: AudioOutput): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getAudioOutput(): AudioOutput
+  
+  @DoNotStrip
+  @Keep
+  abstract fun isAndroidAutoConnected(): Boolean
 
   private external fun initHybrid(): HybridData
 

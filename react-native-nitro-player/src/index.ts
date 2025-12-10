@@ -11,3 +11,4 @@ export * from './hooks';
 
 // Export types
 export * from './types/PlayerQueue';
+export type { AudioOutput } from './types/PlayerQueue';

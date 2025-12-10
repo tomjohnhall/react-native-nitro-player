@@ -16,7 +16,7 @@ import {
   useOnSeek,
   useOnPlaybackProgressChange
 } from 'react-native-nitro-player';
-import type { TrackItem, QueueOperation, TrackPlayerState, Reason, PlayerState, PlayerConfig } from '../react-native-nitro-player/src/types/PlayerQueue';
+import type { TrackItem, QueueOperation, TrackPlayerState, Reason, PlayerState, PlayerConfig, AudioOutput } from '../react-native-nitro-player/src/types/PlayerQueue';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -26,10 +26,19 @@ function App() {
   );
 }
 
+TrackPlayer.configure({
+  androidAutoEnabled: true,
+  carPlayEnabled: false,
+  showInNotification: true,
+});
+
+
 function AppContent() {
   const [queue, setQueue] = useState<TrackItem[]>([]);
   const [lastOperation, setLastOperation] = useState<QueueOperation | undefined>(undefined);
   const [playerState, setPlayerState] = useState<PlayerState | undefined>(undefined);
+  const [audioOutput, setAudioOutput] = useState<AudioOutput>('AUTO');
+  const [isAndroidAutoConnected, setIsAndroidAutoConnected] = useState<boolean>(false);
 
   // Use hooks to get player state directly
   const { track: currentTrack, reason: trackChangeReason } = useOnChangeTrack();
@@ -46,7 +55,7 @@ function AppContent() {
       album: 'Chill Vibes',
       duration: 182.0,
       url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-      artwork: 'https://via.placeholder.com/150/0000FF/808080?Text=Sunset',
+      artwork: 'https://img.freepik.com/free-photo/sunset-time-tropical-beach-sea-with-coconut-palm-tree_74190-1075.jpg?semt=ais_hybrid&w=740&q=80',
     },
     {
       id: '2',
@@ -88,13 +97,7 @@ function AppContent() {
   }, [lastSeekPosition, lastSeekDuration]);
 
   useEffect(() => {
-    // Configure player for notifications and lock screen
-    TrackPlayer.configure({
-      androidAutoEnabled: false,
-      carPlayEnabled: false,
-      showInNotification: true,
-      showInLockScreen: true,
-    });
+    console.log('Initializing player');
 
     // Get initial queue
     const initialQueue = PlayerQueue.getQueue();
@@ -106,6 +109,14 @@ function AppContent() {
       setQueue(updatedQueue);
       setLastOperation(operation);
     });
+    
+    // Check Android Auto connection periodically
+    const checkAndroidAuto = setInterval(() => {
+      const connected = TrackPlayer.isAndroidAutoConnected();
+      setIsAndroidAutoConnected(connected);
+    }, 1000);
+    
+    return () => clearInterval(checkAndroidAuto);
   }, []);
 
   const handleLoadQueue = () => {
@@ -180,6 +191,14 @@ function AppContent() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Player Controls</Text>
+          
+          {/* Android Auto Connection Indicator */}
+          <View style={[styles.connectionIndicator, isAndroidAutoConnected && styles.connectionIndicatorConnected]}>
+            <Text style={styles.connectionText}>
+              Android Auto: {isAndroidAutoConnected ? '🚗 CONNECTED' : '📱 Disconnected'}
+            </Text>
+          </View>
+          
           <View style={styles.controlsRow}>
             <TouchableOpacity style={styles.controlButton} onPress={handleSkipPrevious}>
               <Text style={styles.buttonText}>Prev</Text>
@@ -204,6 +223,45 @@ function AppContent() {
             <TouchableOpacity style={styles.controlButton} onPress={handleGetState}>
               <Text style={styles.buttonText}>Get State</Text>
             </TouchableOpacity>
+          </View>
+          
+          {/* Android Auto Connection Indicator */}
+          <View style={[styles.connectionIndicator, isAndroidAutoConnected && styles.connectionIndicatorConnected]}>
+            <Text style={styles.connectionText}>
+              Android Auto: {isAndroidAutoConnected ? '🚗 CONNECTED' : '📱 Disconnected'}
+            </Text>
+          </View>
+          
+          {/* Audio Output Controls */}
+          <View style={styles.audioOutputSection}>
+            <Text style={styles.sectionTitle}>Audio Output</Text>
+            <Text style={styles.statusText}>Current: {audioOutput}</Text>
+            <View style={styles.controlsRow}>
+              <TouchableOpacity 
+                style={[styles.controlButton, audioOutput === 'AUTO' && styles.activeButton]} 
+                onPress={() => {
+                  TrackPlayer.setAudioOutput('AUTO');
+                  setAudioOutput('AUTO');
+                }}>
+                <Text style={styles.buttonText}>AUTO</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.controlButton, audioOutput === 'PHONE' && styles.activeButton]} 
+                onPress={() => {
+                  TrackPlayer.setAudioOutput('PHONE');
+                  setAudioOutput('PHONE');
+                }}>
+                <Text style={styles.buttonText}>PHONE</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.controlButton, audioOutput === 'CAR' && styles.activeButton]} 
+                onPress={() => {
+                  TrackPlayer.setAudioOutput('CAR');
+                  setAudioOutput('CAR');
+                }}>
+                <Text style={styles.buttonText}>CAR</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <Text style={styles.statusText}>State: {playbackState !== undefined ? playbackState : 'None'}</Text>
           {currentTrack && (
@@ -454,6 +512,33 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     minWidth: 60,
     alignItems: 'center',
+  },
+  activeButton: {
+    backgroundColor: '#34C759',
+  },
+  audioOutputSection: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 5,
+  },
+  connectionIndicator: {
+    padding: 8,
+    marginBottom: 10,
+    backgroundColor: '#f8d7da',
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#f5c6cb',
+  },
+  connectionIndicatorConnected: {
+    backgroundColor: '#d4edda',
+    borderColor: '#c3e6cb',
+  },
+  connectionText: {
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
   },
   statusText: {
     textAlign: 'center',

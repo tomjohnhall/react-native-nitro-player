@@ -37,13 +37,10 @@ namespace margelo::nitro::nitroplayer {
       jni::local_ref<jni::JBoolean> carPlayEnabled = this->getFieldValue(fieldCarPlayEnabled);
       static const auto fieldShowInNotification = clazz->getField<jni::JBoolean>("showInNotification");
       jni::local_ref<jni::JBoolean> showInNotification = this->getFieldValue(fieldShowInNotification);
-      static const auto fieldShowInLockScreen = clazz->getField<jni::JBoolean>("showInLockScreen");
-      jni::local_ref<jni::JBoolean> showInLockScreen = this->getFieldValue(fieldShowInLockScreen);
       return PlayerConfig(
         androidAutoEnabled != nullptr ? std::make_optional(static_cast<bool>(androidAutoEnabled->value())) : std::nullopt,
         carPlayEnabled != nullptr ? std::make_optional(static_cast<bool>(carPlayEnabled->value())) : std::nullopt,
-        showInNotification != nullptr ? std::make_optional(static_cast<bool>(showInNotification->value())) : std::nullopt,
-        showInLockScreen != nullptr ? std::make_optional(static_cast<bool>(showInLockScreen->value())) : std::nullopt
+        showInNotification != nullptr ? std::make_optional(static_cast<bool>(showInNotification->value())) : std::nullopt
       );
     }
 
@@ -53,15 +50,14 @@ namespace margelo::nitro::nitroplayer {
      */
     [[maybe_unused]]
     static jni::local_ref<JPlayerConfig::javaobject> fromCpp(const PlayerConfig& value) {
-      using JSignature = JPlayerConfig(jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>);
+      using JSignature = JPlayerConfig(jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
         clazz,
         value.androidAutoEnabled.has_value() ? jni::JBoolean::valueOf(value.androidAutoEnabled.value()) : nullptr,
         value.carPlayEnabled.has_value() ? jni::JBoolean::valueOf(value.carPlayEnabled.value()) : nullptr,
-        value.showInNotification.has_value() ? jni::JBoolean::valueOf(value.showInNotification.value()) : nullptr,
-        value.showInLockScreen.has_value() ? jni::JBoolean::valueOf(value.showInLockScreen.value()) : nullptr
+        value.showInNotification.has_value() ? jni::JBoolean::valueOf(value.showInNotification.value()) : nullptr
       );
     }
   };

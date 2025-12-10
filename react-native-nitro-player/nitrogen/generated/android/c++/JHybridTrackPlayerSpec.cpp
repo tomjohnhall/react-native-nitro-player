@@ -13,6 +13,8 @@ namespace margelo::nitro::nitroplayer { struct PlayerState; }
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
+// Forward declaration of `AudioOutput` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class AudioOutput; }
 // Forward declaration of `PlayerConfig` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `Reason` to properly resolve imports.
@@ -31,6 +33,8 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include "TrackPlayerState.hpp"
 #include "JTrackPlayerState.hpp"
 #include <vector>
+#include "AudioOutput.hpp"
+#include "JAudioOutput.hpp"
 #include "PlayerConfig.hpp"
 #include "JPlayerConfig.hpp"
 #include "Reason.hpp"
@@ -118,6 +122,20 @@ namespace margelo::nitro::nitroplayer {
   void JHybridTrackPlayerSpec::onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) {
     static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_double_double_std__optional_bool_::javaobject> /* callback */)>("onPlaybackProgressChange_cxx");
     method(_javaPart, JFunc_void_double_double_std__optional_bool__cxx::fromCpp(callback));
+  }
+  void JHybridTrackPlayerSpec::setAudioOutput(AudioOutput output) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JAudioOutput> /* output */)>("setAudioOutput");
+    method(_javaPart, JAudioOutput::fromCpp(output));
+  }
+  AudioOutput JHybridTrackPlayerSpec::getAudioOutput() {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JAudioOutput>()>("getAudioOutput");
+    auto __result = method(_javaPart);
+    return __result->toCpp();
+  }
+  bool JHybridTrackPlayerSpec::isAndroidAutoConnected() {
+    static const auto method = javaClassStatic()->getMethod<jboolean()>("isAndroidAutoConnected");
+    auto __result = method(_javaPart);
+    return static_cast<bool>(__result);
   }
 
 } // namespace margelo::nitro::nitroplayer
