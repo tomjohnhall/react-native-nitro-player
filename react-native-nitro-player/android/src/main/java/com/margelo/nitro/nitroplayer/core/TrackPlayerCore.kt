@@ -6,6 +6,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultLoadControl
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.NitroPlayerPackage
 import com.margelo.nitro.nitroplayer.PlayerState
@@ -61,7 +62,22 @@ class TrackPlayerCore private constructor(private val context: Context) {
 
     init {
         handler.post {
-            player = ExoPlayer.Builder(context).build()
+            // Configure LoadControl for gapless playback
+            // This enables pre-buffering of the next track for seamless transitions
+            val loadControl = DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                    DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,      // Minimum buffer: 1.5s
+                    DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,      // Maximum buffer: 5s
+                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,  // Buffer for playback: 2.5s
+                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS  // Buffer after rebuffer: 5s
+                )
+                .setBackBuffer(DefaultLoadControl.DEFAULT_BACK_BUFFER_DURATION_MS, true)  // Keep back buffer for seamless transitions
+                .setPrioritizeTimeOverSizeThresholds(true)  // Prioritize time-based buffering
+                .build()
+            
+            player = ExoPlayer.Builder(context)
+                .setLoadControl(loadControl)
+                .build()
             mediaSessionManager = MediaSessionManager(context, player, playlistManager).apply {
                 setTrackPlayerCore(this@TrackPlayerCore)
             }

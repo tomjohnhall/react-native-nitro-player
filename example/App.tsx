@@ -243,6 +243,11 @@ function AppContent() {
   const handleSkipPrevious = () => TrackPlayer.skipToPrevious();
   const handleSeekTo30 = () => TrackPlayer.seek(30);
   const handleSeekTo60 = () => TrackPlayer.seek(60);
+  const handleSeekToLast10 = () => {
+    if (totalDuration > 10) {
+      TrackPlayer.seek(totalDuration - 10);
+    }
+  };
   
   const handleGetState = () => {
     const state = TrackPlayer.getState();
@@ -286,6 +291,11 @@ function AppContent() {
             <TouchableOpacity style={styles.controlButton} onPress={handleSeekTo60}>
               <Text style={styles.buttonText}>Seek 60s</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.controlButton} onPress={handleSeekToLast10}>
+              <Text style={styles.buttonText}>Last 10s</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.controlsRow}>
             <TouchableOpacity style={styles.controlButton} onPress={handleGetState}>
               <Text style={styles.buttonText}>Get State</Text>
             </TouchableOpacity>
