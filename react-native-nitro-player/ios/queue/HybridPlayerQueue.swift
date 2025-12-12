@@ -88,15 +88,4 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
     }
 }
 
-// Extension to convert internal Playlist to generated Playlist type
-extension Playlist {
-    func toGeneratedPlaylist() -> Playlist {
-        return Playlist(
-            id: self.id,
-            name: self.name,
-            description: self.description.map { Variant_NullType_String.second($0) },
-            artwork: self.artwork.map { Variant_NullType_String.second($0) },
-            tracks: self.tracks
-        )
-    }
-}
+// Extension removed - toGeneratedPlaylist() is now defined in PlaylistModel.swift

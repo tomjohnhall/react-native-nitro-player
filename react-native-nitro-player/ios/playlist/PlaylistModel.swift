@@ -1,17 +1,18 @@
 //
-//  Playlist.swift
+//  PlaylistModel.swift
 //  NitroPlayer
 //
-//  Created on 10/12/25.
+//  Created by Ritesh Shukla on 10/12/25.
 //
 
 import Foundation
+import NitroModules
 
 /**
  * Represents a playlist containing multiple tracks
  * Uses AVPlayer's native playlist functionality
  */
-class Playlist {
+class PlaylistModel {
     let id: String
     let name: String
     let description: String?
@@ -33,5 +34,15 @@ class Playlist {
     func isEmpty() -> Bool {
         return tracks.isEmpty
     }
+    
+    // Convert to generated Playlist type
+    func toGeneratedPlaylist() -> Playlist {
+        return Playlist(
+            id: self.id,
+            name: self.name,
+            description: self.description.map { Variant_NullType_String.second($0) },
+            artwork: self.artwork.map { Variant_NullType_String.second($0) },
+            tracks: self.tracks
+        )
+    }
 }
-

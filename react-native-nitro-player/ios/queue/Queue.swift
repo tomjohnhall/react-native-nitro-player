@@ -2,7 +2,7 @@
 //  Queue.swift
 //  NitroPlayer
 //
-//  Created on 24/11/25.
+//  Created by Ritesh Shukla on 24/11/25.
 //
 
 import Foundation

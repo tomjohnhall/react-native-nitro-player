@@ -2,19 +2,20 @@
 //  PlaylistManager.swift
 //  NitroPlayer
 //
-//  Created on 10/12/25.
+//  Created by Ritesh Shukla on 10/12/25.
 //
 
 import Foundation
+import NitroModules
 
 /**
  * Manages multiple playlists using AVPlayer's native playlist functionality
  * Based on: https://developer.android.com/media/media3/exoplayer/playlists
  */
 class PlaylistManager {
-    private var playlists: [String: Playlist] = [:]
-    private var listeners: [(String, ([Playlist], QueueOperation?) -> Void)] = []
-    private var playlistListeners: [String: [(String, (Playlist, QueueOperation?) -> Void)]] = [:]
+    private var playlists: [String: PlaylistModel] = [:]
+    private var listeners: [(String, ([PlaylistModel], QueueOperation?) -> Void)] = []
+    private var playlistListeners: [String: [(String, (PlaylistModel, QueueOperation?) -> Void)]] = [:]
     private var currentPlaylistId: String?
     private let queue = DispatchQueue(label: "com.margelo.nitro.nitroplayer.playlist")
     
@@ -29,7 +30,7 @@ class PlaylistManager {
      */
     func createPlaylist(name: String, description: String? = nil, artwork: String? = nil) -> String {
         let id = UUID().uuidString
-        let playlist = Playlist(id: id, name: name, description: description, artwork: artwork)
+        let playlist = PlaylistModel(id: id, name: name, description: description, artwork: artwork)
         
         queue.sync {
             playlists[id] = playlist
@@ -71,7 +72,7 @@ class PlaylistManager {
         }
         
         queue.sync {
-            playlists[playlistId] = Playlist(
+            playlists[playlistId] = PlaylistModel(
                 id: playlist.id,
                 name: name ?? playlist.name,
                 description: description ?? playlist.description,
@@ -90,7 +91,7 @@ class PlaylistManager {
     /**
      * Get a playlist by ID
      */
-    func getPlaylist(playlistId: String) -> Playlist? {
+    func getPlaylist(playlistId: String) -> PlaylistModel? {
         return queue.sync {
             return playlists[playlistId]
         }
@@ -99,7 +100,7 @@ class PlaylistManager {
     /**
      * Get all playlists
      */
-    func getAllPlaylists() -> [Playlist] {
+    func getAllPlaylists() -> [PlaylistModel] {
         return queue.sync {
             return Array(playlists.values)
         }
@@ -120,7 +121,7 @@ class PlaylistManager {
             } else {
                 tracks.append(track)
             }
-            playlists[playlistId] = Playlist(
+            playlists[playlistId] = PlaylistModel(
                 id: playlist.id,
                 name: playlist.name,
                 description: playlist.description,
@@ -131,6 +132,11 @@ class PlaylistManager {
         
         savePlaylistsToUserDefaults()
         notifyPlaylistChanged(playlistId, .add)
+        
+        // Update TrackPlayerCore if this is the current playlist
+        if currentPlaylistId == playlistId {
+            TrackPlayerCore.shared.updatePlaylist(playlistId: playlistId)
+        }
         
         return true
     }
@@ -150,7 +156,7 @@ class PlaylistManager {
             } else {
                 currentTracks.append(contentsOf: tracks)
             }
-            playlists[playlistId] = Playlist(
+            playlists[playlistId] = PlaylistModel(
                 id: playlist.id,
                 name: playlist.name,
                 description: playlist.description,
@@ -161,6 +167,11 @@ class PlaylistManager {
         
         savePlaylistsToUserDefaults()
         notifyPlaylistChanged(playlistId, .add)
+        
+        // Update TrackPlayerCore if this is the current playlist
+        if currentPlaylistId == playlistId {
+            TrackPlayerCore.shared.updatePlaylist(playlistId: playlistId)
+        }
         
         return true
     }
@@ -180,7 +191,7 @@ class PlaylistManager {
             let wasRemoved = tracks.count < initialCount
             
             if wasRemoved {
-                playlists[playlistId] = Playlist(
+                playlists[playlistId] = PlaylistModel(
                     id: playlist.id,
                     name: playlist.name,
                     description: playlist.description,
@@ -195,6 +206,11 @@ class PlaylistManager {
         if removed {
             savePlaylistsToUserDefaults()
             notifyPlaylistChanged(playlistId, .remove)
+            
+            // Update TrackPlayerCore if this is the current playlist
+            if currentPlaylistId == playlistId {
+                TrackPlayerCore.shared.updatePlaylist(playlistId: playlistId)
+            }
         }
         
         return removed
@@ -219,7 +235,7 @@ class PlaylistManager {
             let track = reorderedTracks.remove(at: oldIndex)
             reorderedTracks.insert(track, at: newIndex)
             
-            playlists[playlistId] = Playlist(
+            playlists[playlistId] = PlaylistModel(
                 id: playlist.id,
                 name: playlist.name,
                 description: playlist.description,
@@ -230,6 +246,11 @@ class PlaylistManager {
         
         savePlaylistsToUserDefaults()
         notifyPlaylistChanged(playlistId, .update)
+        
+        // Update TrackPlayerCore if this is the current playlist
+        if currentPlaylistId == playlistId {
+            TrackPlayerCore.shared.updatePlaylist(playlistId: playlistId)
+        }
         
         return true
     }
@@ -243,8 +264,9 @@ class PlaylistManager {
         }
         
         currentPlaylistId = playlistId
-        // Note: iOS implementation would update AVPlayer here
-        // For now, we just track the current playlist
+        
+        // Update TrackPlayerCore
+        TrackPlayerCore.shared.loadPlaylist(playlistId: playlistId)
         
         return true
     }
@@ -259,14 +281,14 @@ class PlaylistManager {
     /**
      * Get the current playlist
      */
-    func getCurrentPlaylist() -> Playlist? {
-        return currentPlaylistId.flatMap { queue.sync { playlists[$0] } }
+    func getCurrentPlaylist() -> PlaylistModel? {
+        return currentPlaylistId.flatMap { id in queue.sync { playlists[id] } }
     }
     
     /**
      * Add a listener for playlist changes
      */
-    func addPlaylistsChangeListener(listener: @escaping ([Playlist], QueueOperation?) -> Void) -> () -> Void {
+    func addPlaylistsChangeListener(listener: @escaping ([PlaylistModel], QueueOperation?) -> Void) -> () -> Void {
         let listenerId = UUID().uuidString
         queue.sync {
             listeners.append((listenerId, listener))
@@ -282,7 +304,7 @@ class PlaylistManager {
     /**
      * Add a listener for a specific playlist changes
      */
-    func addPlaylistChangeListener(playlistId: String, listener: @escaping (Playlist, QueueOperation?) -> Void) -> () -> Void {
+    func addPlaylistChangeListener(playlistId: String, listener: @escaping (PlaylistModel, QueueOperation?) -> Void) -> () -> Void {
         let listenerId = UUID().uuidString
         queue.sync {
             if playlistListeners[playlistId] == nil {
@@ -316,30 +338,36 @@ class PlaylistManager {
     private func savePlaylistsToUserDefaults() {
         // Save playlists to UserDefaults for persistence
         // Implementation similar to Android SharedPreferences
-        let encoder = JSONEncoder()
         do {
             let playlistsArray = queue.sync {
                 return Array(playlists.values)
             }
-            let data = try encoder.encode(playlistsArray.map { playlist in
-                [
+            let playlistsData = playlistsArray.map { playlist -> [String: Any] in
+                return [
                     "id": playlist.id,
                     "name": playlist.name,
                     "description": playlist.description ?? "",
                     "artwork": playlist.artwork ?? "",
-                    "tracks": playlist.tracks.map { track in
-                        [
+                    "tracks": playlist.tracks.map { track -> [String: Any] in
+                        var trackDict: [String: Any] = [
                             "id": track.id,
                             "title": track.title,
                             "artist": track.artist,
                             "album": track.album,
                             "duration": track.duration,
-                            "url": track.url,
-                            "artwork": track.artwork ?? ""
+                            "url": track.url
                         ]
+                        // Handle artwork - unwrap Variant_NullType_String
+                        if let artwork = track.artwork, case .second(let artworkUrl) = artwork {
+                            trackDict["artwork"] = artworkUrl
+                        } else {
+                            trackDict["artwork"] = ""
+                        }
+                        return trackDict
                     }
                 ]
-            })
+            }
+            let data = try JSONSerialization.data(withJSONObject: playlistsData, options: [])
             UserDefaults.standard.set(data, forKey: "NitroPlayerPlaylists")
             UserDefaults.standard.set(currentPlaylistId, forKey: "NitroPlayerCurrentPlaylistId")
         } catch {
@@ -378,7 +406,8 @@ class PlaylistManager {
                             return nil
                         }
                         
-                        let artwork = trackDict["artwork"] as? String
+                        let artworkString = trackDict["artwork"] as? String
+                        let artwork = artworkString.flatMap { !$0.isEmpty ? Variant_NullType_String.second($0) : nil }
                         return TrackItem(
                             id: id,
                             title: title,
@@ -390,7 +419,7 @@ class PlaylistManager {
                         )
                     }
                     
-                    playlists[id] = Playlist(
+                    playlists[id] = PlaylistModel(
                         id: id,
                         name: name,
                         description: description,
