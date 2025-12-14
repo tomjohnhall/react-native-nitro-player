@@ -34,6 +34,7 @@ export interface PlayerQueue extends HybridObject<{android: "kotlin" , ios: "swi
 export interface TrackPlayer extends HybridObject<{android: "kotlin" , ios: "swift"}> {
     play(): void;
     pause(): void;
+    playSong(songId: string, fromPlaylist?: string): void;
     skipToNext(): void;
     skipToPrevious(): void;
     seek(position: number): void;

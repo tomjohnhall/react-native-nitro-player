@@ -23,12 +23,12 @@ namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
 
+#include <string>
+#include <optional>
 #include "PlayerState.hpp"
 #include <NitroModules/Null.hpp>
 #include "TrackItem.hpp"
 #include <variant>
-#include <optional>
-#include <string>
 #include "TrackPlayerState.hpp"
 #include "PlayerConfig.hpp"
 #include "Reason.hpp"
@@ -86,6 +86,12 @@ namespace margelo::nitro::nitroplayer {
     }
     inline void pause() override {
       auto __result = _swiftPart.pause();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) override {
+      auto __result = _swiftPart.playSong(songId, fromPlaylist);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

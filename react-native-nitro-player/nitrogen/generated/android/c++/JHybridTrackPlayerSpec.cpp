@@ -83,6 +83,10 @@ namespace margelo::nitro::nitroplayer {
     static const auto method = javaClassStatic()->getMethod<void()>("pause");
     method(_javaPart);
   }
+  void JHybridTrackPlayerSpec::playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* songId */, jni::alias_ref<jni::JString> /* fromPlaylist */)>("playSong");
+    method(_javaPart, jni::make_jstring(songId), fromPlaylist.has_value() ? jni::make_jstring(fromPlaylist.value()) : nullptr);
+  }
   void JHybridTrackPlayerSpec::skipToNext() {
     static const auto method = javaClassStatic()->getMethod<void()>("skipToNext");
     method(_javaPart);

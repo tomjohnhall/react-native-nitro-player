@@ -327,6 +327,98 @@ class TrackPlayerCore private constructor(private val context: Context) {
         handler.post { player.pause() }
     }
 
+    fun playSong(songId: String, fromPlaylist: String?) {
+        println("🎵 TrackPlayerCore: playSong() called - songId: $songId, fromPlaylist: $fromPlaylist")
+        
+        handler.post {
+            var targetPlaylistId: String? = null
+            var songIndex: Int = -1
+            
+            // Case 1: If fromPlaylist is provided, use that playlist
+            if (fromPlaylist != null) {
+                println("🎵 TrackPlayerCore: Looking for song in specified playlist: $fromPlaylist")
+                val playlist = playlistManager.getPlaylist(fromPlaylist)
+                if (playlist != null) {
+                    songIndex = playlist.tracks.indexOfFirst { it.id == songId }
+                    if (songIndex >= 0) {
+                        targetPlaylistId = fromPlaylist
+                        println("✅ Found song at index $songIndex in playlist $fromPlaylist")
+                    } else {
+                        println("⚠️ Song $songId not found in specified playlist $fromPlaylist")
+                        return@post
+                    }
+                } else {
+                    println("⚠️ Playlist $fromPlaylist not found")
+                    return@post
+                }
+            }
+            // Case 2: If fromPlaylist is not provided, search in current/loaded playlist first
+            else {
+                println("🎵 TrackPlayerCore: No playlist specified, checking current playlist")
+                
+                // Check if song exists in currently loaded playlist
+                if (currentPlaylistId != null) {
+                    val currentPlaylist = playlistManager.getPlaylist(currentPlaylistId!!)
+                    if (currentPlaylist != null) {
+                        songIndex = currentPlaylist.tracks.indexOfFirst { it.id == songId }
+                        if (songIndex >= 0) {
+                            targetPlaylistId = currentPlaylistId
+                            println("✅ Found song at index $songIndex in current playlist $currentPlaylistId")
+                        }
+                    }
+                }
+                
+                // If not found in current playlist, search in all playlists
+                if (songIndex == -1) {
+                    println("🔍 Song not found in current playlist, searching all playlists...")
+                    val allPlaylists = playlistManager.getAllPlaylists()
+                    
+                    for (playlist in allPlaylists) {
+                        songIndex = playlist.tracks.indexOfFirst { it.id == songId }
+                        if (songIndex >= 0) {
+                            targetPlaylistId = playlist.id
+                            println("✅ Found song at index $songIndex in playlist ${playlist.id}")
+                            break
+                        }
+                    }
+                    
+                    // If still not found, just use the first playlist if available
+                    if (songIndex == -1 && allPlaylists.isNotEmpty()) {
+                        targetPlaylistId = allPlaylists[0].id
+                        songIndex = 0
+                        println("⚠️ Song not found in any playlist, using first playlist and starting at index 0")
+                    }
+                }
+            }
+            
+            // Now play the song
+            if (targetPlaylistId == null || songIndex < 0) {
+                println("❌ Could not determine playlist or song index")
+                return@post
+            }
+            
+            // Load playlist if it's different from current
+            if (currentPlaylistId != targetPlaylistId) {
+                println("🔄 Loading new playlist: $targetPlaylistId")
+                val playlist = playlistManager.getPlaylist(targetPlaylistId)
+                if (playlist != null) {
+                    currentPlaylistId = targetPlaylistId
+                    updatePlayerQueue(playlist.tracks)
+                    
+                    // Wait a bit for playlist to load, then play from index
+                    handler.postDelayed({
+                        println("▶️ Playing from index: $songIndex")
+                        playFromIndex(songIndex)
+                    }, 100)
+                }
+            } else {
+                // Playlist already loaded, just play from index
+                println("▶️ Playing from index: $songIndex")
+                playFromIndex(songIndex)
+            }
+        }
+    }
+
     fun skipToNext() {
         handler.post {
             if (player.hasNextMediaItem()) {

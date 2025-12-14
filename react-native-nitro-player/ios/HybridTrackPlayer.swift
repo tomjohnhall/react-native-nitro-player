@@ -24,6 +24,10 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
         core.pause()
     }
     
+    func playSong(songId: String, fromPlaylist: String?) throws {
+        core.playSong(songId: songId, fromPlaylist: fromPlaylist)
+    }
+    
     func skipToNext() throws {
         core.skipToNext()
     }

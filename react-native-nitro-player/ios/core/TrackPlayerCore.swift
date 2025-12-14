@@ -625,6 +625,90 @@ class TrackPlayerCore: NSObject {
         }
     }
     
+    func playSong(songId: String, fromPlaylist: String?) {
+        print("🎵 TrackPlayerCore: playSong() called - songId: \(songId), fromPlaylist: \(fromPlaylist ?? "nil")")
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            var targetPlaylistId: String?
+            var songIndex: Int = -1
+            
+            // Case 1: If fromPlaylist is provided, use that playlist
+            if let playlistId = fromPlaylist {
+                print("🎵 TrackPlayerCore: Looking for song in specified playlist: \(playlistId)")
+                if let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) {
+                    if let index = playlist.tracks.firstIndex(where: { $0.id == songId }) {
+                        targetPlaylistId = playlistId
+                        songIndex = index
+                        print("✅ Found song at index \(index) in playlist \(playlistId)")
+                    } else {
+                        print("⚠️ Song \(songId) not found in specified playlist \(playlistId)")
+                        return
+                    }
+                } else {
+                    print("⚠️ Playlist \(playlistId) not found")
+                    return
+                }
+            }
+            // Case 2: If fromPlaylist is not provided, search in current/loaded playlist first
+            else {
+                print("🎵 TrackPlayerCore: No playlist specified, checking current playlist")
+                
+                // Check if song exists in currently loaded playlist
+                if let currentId = self.currentPlaylistId,
+                   let currentPlaylist = self.playlistManager.getPlaylist(playlistId: currentId) {
+                    if let index = currentPlaylist.tracks.firstIndex(where: { $0.id == songId }) {
+                        targetPlaylistId = currentId
+                        songIndex = index
+                        print("✅ Found song at index \(index) in current playlist \(currentId)")
+                    }
+                }
+                
+                // If not found in current playlist, search in all playlists
+                if songIndex == -1 {
+                    print("🔍 Song not found in current playlist, searching all playlists...")
+                    let allPlaylists = self.playlistManager.getAllPlaylists()
+                    
+                    for playlist in allPlaylists {
+                        if let index = playlist.tracks.firstIndex(where: { $0.id == songId }) {
+                            targetPlaylistId = playlist.id
+                            songIndex = index
+                            print("✅ Found song at index \(index) in playlist \(playlist.id)")
+                            break
+                        }
+                    }
+                    
+                    // If still not found, just use the first playlist if available
+                    if songIndex == -1 && !allPlaylists.isEmpty {
+                        targetPlaylistId = allPlaylists[0].id
+                        songIndex = 0
+                        print("⚠️ Song not found in any playlist, using first playlist and starting at index 0")
+                    }
+                }
+            }
+            
+            // Now play the song
+            guard let playlistId = targetPlaylistId, songIndex >= 0 else {
+                print("❌ Could not determine playlist or song index")
+                return
+            }
+            
+            // Load playlist if it's different from current
+            if self.currentPlaylistId != playlistId {
+                print("🔄 Loading new playlist: \(playlistId)")
+                if let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) {
+                    self.currentPlaylistId = playlistId
+                    self.updatePlayerQueue(tracks: playlist.tracks)
+                }
+            }
+            
+            // Play from the found index
+            print("▶️ Playing from index: \(songIndex)")
+            self.playFromIndex(index: songIndex)
+        }
+    }
+    
     func skipToNext() {
         DispatchQueue.main.async { [weak self] in
             guard let self = self,

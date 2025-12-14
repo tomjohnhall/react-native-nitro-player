@@ -28,6 +28,12 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
 
     @DoNotStrip
     @Keep
+    override fun playSong(songId: String, fromPlaylist: String?) {
+        core.playSong(songId, fromPlaylist)
+    }
+
+    @DoNotStrip
+    @Keep
     override fun skipToNext() {
         core.skipToNext()
     }

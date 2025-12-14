@@ -24,11 +24,12 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
+#include <string>
+#include <optional>
 #include "PlayerState.hpp"
 #include "PlayerConfig.hpp"
 #include "TrackItem.hpp"
 #include "Reason.hpp"
-#include <optional>
 #include <functional>
 #include "TrackPlayerState.hpp"
 
@@ -65,6 +66,7 @@ namespace margelo::nitro::nitroplayer {
       // Methods
       virtual void play() = 0;
       virtual void pause() = 0;
+      virtual void playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) = 0;
       virtual void skipToNext() = 0;
       virtual void skipToPrevious() = 0;
       virtual void seek(double position) = 0;

@@ -140,6 +140,24 @@ open class HybridTrackPlayerSpec_cxx {
   }
   
   @inline(__always)
+  public final func playSong(songId: std.string, fromPlaylist: bridge.std__optional_std__string_) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.playSong(songId: String(songId), fromPlaylist: { () -> String? in
+        if bridge.has_value_std__optional_std__string_(fromPlaylist) {
+          let __unwrapped = bridge.get_std__optional_std__string_(fromPlaylist)
+          return String(__unwrapped)
+        } else {
+          return nil
+        }
+      }())
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
   public final func skipToNext() -> bridge.Result_void_ {
     do {
       try self.__implementation.skipToNext()

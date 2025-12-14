@@ -255,6 +255,16 @@ function AppContent() {
     setPlayerState(state);
   };
 
+  const handlePlaySongFromPlaylist = (songId: string, playlistId: string) => {
+    console.log('Playing song:', songId, 'from playlist:', playlistId);
+    TrackPlayer.playSong(songId, playlistId);
+  };
+
+  const handlePlaySongAuto = (songId: string) => {
+    console.log('Playing song:', songId, '(auto-find playlist)');
+    TrackPlayer.playSong(songId);
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
@@ -262,6 +272,12 @@ function AppContent() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Player Controls</Text>
+          
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>💡 Tip: Click on any track in the playlists below to play it!</Text>
+            <Text style={styles.infoSubText}>• Click track name = Play from that playlist</Text>
+            <Text style={styles.infoSubText}>• Click 🎵 = Auto-find and play</Text>
+          </View>
           
           {/* Android Auto Connection Indicator */}
           <View style={[styles.connectionIndicator, isAndroidAutoConnected && styles.connectionIndicatorConnected]}>
@@ -409,13 +425,23 @@ function AppContent() {
                 </View>
                 {playlist.tracks.length > 0 && (
                   <View style={styles.tracksList}>
+                    <Text style={styles.tracksListHeader}>Tracks (tap to play):</Text>
                     {playlist.tracks.map((track, index) => (
                       <View key={track.id} style={styles.trackItem}>
                         <Text style={styles.trackIndex}>{index + 1}.</Text>
-                        <View style={styles.trackInfo}>
+                        <TouchableOpacity 
+                          style={styles.trackInfo}
+                          onPress={() => handlePlaySongFromPlaylist(track.id, playlist.id)}
+                        >
                           <Text style={styles.trackTitle}>{track.title}</Text>
                           <Text style={styles.trackArtist}>{track.artist}</Text>
-                        </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.playTrackButton}
+                          onPress={() => handlePlaySongAuto(track.id)}
+                        >
+                          <Text style={styles.playTrackButtonText}>🎵</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity 
                           style={styles.removeButton}
                           onPress={() => handleRemoveTrack(playlist.id, track.id)}
@@ -606,6 +632,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
+  tracksListHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+  },
   trackItem: {
     flexDirection: 'row',
     padding: 8,
@@ -623,16 +655,29 @@ const styles = StyleSheet.create({
   },
   trackInfo: {
     flex: 1,
+    paddingRight: 8,
   },
   trackTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#007AFF',
   },
   trackArtist: {
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+  },
+  playTrackButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#28a745',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  playTrackButtonText: {
+    fontSize: 16,
   },
   removeButton: {
     width: 24,
@@ -785,6 +830,26 @@ const styles = StyleSheet.create({
   },
   stateTrackInfo: {
     marginTop: 4,
+  },
+  infoBox: {
+    backgroundColor: '#e3f2fd',
+    padding: 12,
+    borderRadius: 6,
+    marginBottom: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  infoText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1565C0',
+    marginBottom: 8,
+  },
+  infoSubText: {
+    fontSize: 12,
+    color: '#1976D2',
+    marginLeft: 8,
+    marginBottom: 2,
   },
 });
 

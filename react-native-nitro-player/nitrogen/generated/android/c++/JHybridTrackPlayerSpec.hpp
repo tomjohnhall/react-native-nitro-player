@@ -56,6 +56,7 @@ namespace margelo::nitro::nitroplayer {
     // Methods
     void play() override;
     void pause() override;
+    void playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) override;
     void skipToNext() override;
     void skipToPrevious() override;
     void seek(double position) override;
