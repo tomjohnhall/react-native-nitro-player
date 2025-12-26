@@ -100,6 +100,50 @@ Controls playback. Use it to:
 - Get current player state
 - Listen to playback events
 
+## React Hooks
+
+The library provides React hooks for reactive state management. These hooks automatically update your components when player state changes.
+
+### `useOnChangeTrack()`
+
+Returns the current track and the reason why it changed.
+
+**Returns:**
+- `track: TrackItem | undefined` - The current track, or `undefined` if no track is playing
+- `reason: Reason | undefined` - The reason for the track change (`'user_action'`, `'skip'`, `'end'`, or `'error'`)
+
+### `useOnPlaybackStateChange()`
+
+Returns the current playback state and the reason for the state change.
+
+**Returns:**
+- `state: TrackPlayerState | undefined` - Current playback state (`'playing'`, `'paused'`, or `'stopped'`)
+- `reason: Reason | undefined` - The reason for the state change
+
+### `useOnPlaybackProgressChange()`
+
+Returns real-time playback progress updates.
+
+**Returns:**
+- `position: number` - Current playback position in seconds
+- `totalDuration: number` - Total duration of the current track in seconds
+- `isManuallySeeked: boolean | undefined` - `true` if the user manually seeked, `undefined` otherwise
+
+### `useOnSeek()`
+
+Returns information about the last seek event.
+
+**Returns:**
+- `position: number | undefined` - The position where the user seeked to, or `undefined` if no seek has occurred
+- `totalDuration: number | undefined` - The total duration at the time of seek, or `undefined` if no seek has occurred
+
+### `useAndroidAutoConnection()`
+
+Monitors Android Auto connection status.
+
+**Returns:**
+- `isConnected: boolean` - `true` if connected to Android Auto, `false` otherwise
+
 ## Usage Examples
 
 ### Using React Hooks
