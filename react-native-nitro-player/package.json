@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-player",
-  "version": "0.0.1",
+  "version": "0.1.0-alpha.0",
   "description": "react-native-nitro-player",
   "main": "lib/index",
   "module": "lib/index",
