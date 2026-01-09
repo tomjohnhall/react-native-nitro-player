@@ -123,9 +123,6 @@
     "github": {
       "release": true
     },
-    "hooks": {
-      "after:bump": "bun run build"
-    },
     "plugins": {
       "@release-it/bumper": {
         "in": "package.json",
