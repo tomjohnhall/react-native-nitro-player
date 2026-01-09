@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-player",
-  "version": "0.3.0-alpha.4",
+  "version": "0.3.0-alpha.5",
   "description": "react-native-nitro-player",
   "main": "lib/index",
   "module": "lib/index",
@@ -115,7 +115,6 @@
     "npm": {
       "publish": true
     },
-
     "git": {
       "commitMessage": "chore: release ${version}",
       "tagName": "v${version}",
