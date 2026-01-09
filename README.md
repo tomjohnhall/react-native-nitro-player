@@ -80,6 +80,11 @@ TrackPlayer.pause()
 TrackPlayer.skipToNext()
 TrackPlayer.skipToPrevious()
 TrackPlayer.seek(30) // Seek to 30 seconds
+
+// Set repeat mode
+TrackPlayer.setRepeatMode('off')      // No repeat
+TrackPlayer.setRepeatMode('Playlist') // Repeat entire playlist
+TrackPlayer.setRepeatMode('track')    // Repeat current track
 ```
 
 ## Core Concepts
@@ -99,6 +104,7 @@ Controls playback. Use it to:
 
 - Play, pause, and seek
 - Skip tracks
+- Control repeat mode
 - Get current player state
 - Listen to playback events
 
@@ -150,6 +156,117 @@ Monitors Android Auto connection status.
 **Returns:**
 
 - `isConnected: boolean` - `true` if connected to Android Auto, `false` otherwise
+
+### `useAudioDevices()` (Android only)
+
+Automatically polls for audio device changes every 2 seconds.
+
+**Returns:**
+
+- `devices: TAudioDevice[]` - Array of available audio devices
+
+## Audio Device APIs
+
+### `AudioDevices` (Android only)
+
+Android-specific API for managing audio output devices.
+
+#### `getAudioDevices(): TAudioDevice[]`
+
+Returns the list of available audio output devices.
+
+**Returns:** Array of `TAudioDevice` objects with:
+
+- `id: number` - Unique device ID
+- `name: string` - Device name (e.g., "Built-in Speaker", "Bluetooth")
+- `type: number` - Device type constant
+- `isActive: boolean` - Whether this device is currently active
+
+**Example:**
+
+```typescript
+import { AudioDevices } from 'react-native-nitro-player'
+
+if (AudioDevices) {
+  const devices = AudioDevices.getAudioDevices()
+  devices.forEach((device) => {
+    console.log(`${device.name} - Active: ${device.isActive}`)
+  })
+}
+```
+
+#### `setAudioDevice(deviceId: number): boolean`
+
+Sets the active audio output device.
+
+**Parameters:**
+
+- `deviceId: number` - The ID of the device to activate
+
+**Returns:** `true` if successful, `false` otherwise
+
+**Example:**
+
+```typescript
+import { AudioDevices } from 'react-native-nitro-player'
+
+if (AudioDevices) {
+  const success = AudioDevices.setAudioDevice(deviceId)
+  console.log(`Device switch: ${success ? 'success' : 'failed'}`)
+}
+```
+
+### `AudioRoutePicker` (iOS only)
+
+iOS-specific API for displaying the native audio route picker (AirPlay menu).
+
+#### `showRoutePicker(): void`
+
+Shows the native AVRoutePickerView for selecting audio output routes like AirPlay, Bluetooth, etc.
+
+**Example:**
+
+```typescript
+import { AudioRoutePicker } from 'react-native-nitro-player'
+
+if (AudioRoutePicker) {
+  AudioRoutePicker.showRoutePicker()
+}
+```
+
+## Repeat Mode
+
+Control how tracks repeat during playback.
+
+### `setRepeatMode(mode: RepeatMode): boolean`
+
+Sets the repeat mode for the player.
+
+**Parameters:**
+
+- `mode: 'off' | 'Playlist' | 'track'` - The repeat mode to set
+  - `'off'` - No repeat, playlist stops at the end
+  - `'Playlist'` - Repeat the entire playlist
+  - `'track'` - Repeat the current track only
+
+**Returns:** `true` if successful, `false` otherwise
+
+**Example:**
+
+```typescript
+import { TrackPlayer } from 'react-native-nitro-player'
+
+// Turn off repeat
+TrackPlayer.setRepeatMode('off')
+
+// Repeat entire playlist
+TrackPlayer.setRepeatMode('Playlist')
+
+// Repeat current track
+TrackPlayer.setRepeatMode('track')
+```
+
+
 
 ## Usage Examples
 
@@ -272,7 +389,7 @@ TrackPlayer.onPlaybackProgressChange(
 )
 
 // Listen to Android Auto connection changes
-TrackPlayer.onAndroidAutoConnectionChange(connected => {
+TrackPlayer.onAndroidAutoConnectionChange((connected) => {
   console.log('Android Auto:', connected ? 'Connected' : 'Disconnected')
 })
 ```
