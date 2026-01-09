@@ -122,24 +122,10 @@
     "github": {
       "release": true
     },
+    "hooks": {
+      "after:bump": "bun run build"
+    },
     "plugins": {
-      "@release-it/bumper": {
-        "in": "package.json",
-        "out": [
-          {
-            "file": "package.json",
-            "path": "version"
-          },
-          {
-            "file": "../package.json",
-            "path": "version"
-          },
-          {
-            "file": "../example/package.json",
-            "path": "version"
-          }
-        ]
-      },
       "@release-it/conventional-changelog": {
         "preset": {
           "name": "conventionalcommits",
