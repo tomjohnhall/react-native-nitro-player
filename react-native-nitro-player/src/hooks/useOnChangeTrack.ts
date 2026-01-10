@@ -1,24 +1,88 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { TrackPlayer } from '../index'
+import { callbackManager } from './callbackManager'
 import type { TrackItem, Reason } from '../types/PlayerQueue'
 
-/**
- * Hook to get the current track and track change reason
- * @returns Object with current track and reason, or undefined if no track is playing
- */
-export function useOnChangeTrack(): {
-  track: TrackItem | undefined
+export interface TrackChangeResult {
+  track: TrackItem | null
   reason: Reason | undefined
-} {
-  const [track, setTrack] = useState<TrackItem | undefined>(undefined)
-  const [reason, setReason] = useState<Reason | undefined>(undefined)
+  isReady: boolean
+}
 
+/**
+ * Hook to subscribe to track changes.
+ *
+ * This hook provides real-time track change updates using native callbacks.
+ * Multiple components can use this hook simultaneously without interfering
+ * with each other.
+ *
+ * @returns Object with:
+ *   - track: Current track or null if no track is playing
+ *   - reason: Reason for the last track change
+ *   - isReady: Whether the initial state has been loaded
+ *
+ * @example
+ * ```tsx
+ * function NowPlaying() {
+ *   const { track, reason, isReady } = useOnChangeTrack()
+ *
+ *   if (!isReady) return <Text>Loading...</Text>
+ *   if (!track) return <Text>No track playing</Text>
+ *
+ *   return (
+ *     <View>
+ *       <Text>{track.title}</Text>
+ *       <Text>{track.artist}</Text>
+ *     </View>
+ *   )
+ * }
+ * ```
+ */
+export function useOnChangeTrack(): TrackChangeResult {
+  const [track, setTrack] = useState<TrackItem | null>(null)
+  const [reason, setReason] = useState<Reason | undefined>(undefined)
+  const [isReady, setIsReady] = useState(false)
+  const isMounted = useRef(true)
+
+  // Initialize with current track from the player
   useEffect(() => {
-    TrackPlayer.onChangeTrack((newTrack, newReason) => {
-      setTrack(newTrack)
-      setReason(newReason)
-    })
+    isMounted.current = true
+
+    try {
+      const playerState = TrackPlayer.getState()
+      if (isMounted.current) {
+        setTrack(playerState.currentTrack)
+        setIsReady(true)
+      }
+    } catch (error) {
+      console.error('[useOnChangeTrack] Failed to get initial state:', error)
+      if (isMounted.current) {
+        setTrack(null)
+        setIsReady(true)
+      }
+    }
+
+    return () => {
+      isMounted.current = false
+    }
   }, [])
 
-  return { track, reason }
+  // Subscribe to track changes
+  useEffect(() => {
+    const handleTrackChange = (newTrack: TrackItem, newReason?: Reason) => {
+      if (isMounted.current) {
+        setTrack(newTrack)
+        setReason(newReason)
+      }
+    }
+
+    const unsubscribe =
+      callbackManager.subscribeToTrackChange(handleTrackChange)
+
+    return () => {
+      unsubscribe()
+    }
+  }, [])
+
+  return { track, reason, isReady }
 }

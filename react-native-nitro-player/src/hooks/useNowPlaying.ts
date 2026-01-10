@@ -1,6 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { TrackPlayer } from '../index'
+import { callbackManager } from './callbackManager'
 import type { PlayerState } from '../types/PlayerQueue'
+
+const DEFAULT_STATE: PlayerState = {
+  currentTrack: null,
+  currentPosition: 0,
+  totalDuration: 0,
+  currentState: 'stopped',
+  currentPlaylistId: null,
+  currentIndex: -1,
+}
 
 /**
  * Hook to get the current player state (same as TrackPlayer.getState())
@@ -12,8 +22,8 @@ import type { PlayerState } from '../types/PlayerQueue'
  * - Current playlist ID
  * - Current track index
  *
- * The hook polls getState() periodically and also listens to events
- * for immediate updates when state changes.
+ * The hook uses native callbacks for immediate updates when state changes.
+ * Multiple components can use this hook simultaneously.
  *
  * @returns PlayerState object with all current player information
  *
@@ -37,48 +47,51 @@ import type { PlayerState } from '../types/PlayerQueue'
  * ```
  */
 export function useNowPlaying(): PlayerState {
-  const [state, setState] = useState<PlayerState>(() => {
-    // Get initial state
+  const [state, setState] = useState<PlayerState>(DEFAULT_STATE)
+  const isMounted = useRef(true)
+
+  const updateState = useCallback(() => {
+    if (!isMounted.current) return
+
     try {
-      return TrackPlayer.getState()
+      const newState = TrackPlayer.getState()
+      setState(newState)
     } catch (error) {
-      console.error('Error getting initial player state:', error)
-      // Return default state
-      return {
-        currentTrack: null,
-        currentPosition: 0,
-        totalDuration: 0,
-        currentState: 'stopped',
-        currentPlaylistId: null,
-        currentIndex: -1,
-      }
+      console.error('[useNowPlaying] Error updating player state:', error)
     }
-  })
+  }, [])
 
+  // Initialize with current state
   useEffect(() => {
-    // Update state function
-    const updateState = () => {
-      try {
-        const newState = TrackPlayer.getState()
-        setState(newState)
-      } catch (error) {
-        console.error('Error updating player state:', error)
-      }
-    }
-
-    // Get initial state
+    isMounted.current = true
     updateState()
 
-    // Listen to track changes
-    TrackPlayer.onChangeTrack(() => {
+    return () => {
+      isMounted.current = false
+    }
+  }, [updateState])
+
+  // Subscribe to track changes
+  useEffect(() => {
+    const unsubscribe = callbackManager.subscribeToTrackChange(() => {
       updateState()
     })
 
-    // Listen to playback state changes
-    TrackPlayer.onPlaybackStateChange(() => {
+    return () => {
+      unsubscribe()
+    }
+  }, [updateState])
+
+  // Subscribe to playback state changes
+  useEffect(() => {
+    const unsubscribe = callbackManager.subscribeToPlaybackState(() => {
       updateState()
     })
-  }, [])
+
+    return () => {
+      unsubscribe()
+    }
+  }, [updateState])
 
   return state
 }

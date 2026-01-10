@@ -1,5 +1,7 @@
 export { useOnChangeTrack } from './useOnChangeTrack'
+export type { TrackChangeResult } from './useOnChangeTrack'
 export { useOnPlaybackStateChange } from './useOnPlaybackStateChange'
+export type { PlaybackStateResult } from './useOnPlaybackStateChange'
 export { useOnSeek } from './useOnSeek'
 export { useOnPlaybackProgressChange } from './useOnPlaybackProgressChange'
 export { useAndroidAutoConnection } from './useAndroidAutoConnection'

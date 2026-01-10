@@ -1,24 +1,94 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { TrackPlayer } from '../index'
+import { callbackManager } from './callbackManager'
 import type { TrackPlayerState, Reason } from '../types/PlayerQueue'
 
-/**
- * Hook to get the current playback state and reason
- * @returns Object with current playback state and reason
- */
-export function useOnPlaybackStateChange(): {
-  state: TrackPlayerState | undefined
+export interface PlaybackStateResult {
+  state: TrackPlayerState
   reason: Reason | undefined
-} {
-  const [state, setState] = useState<TrackPlayerState | undefined>(undefined)
-  const [reason, setReason] = useState<Reason | undefined>(undefined)
+  isReady: boolean
+}
 
+/**
+ * Hook to subscribe to playback state changes.
+ *
+ * This hook provides real-time playback state updates using native callbacks.
+ * Multiple components can use this hook simultaneously without interfering
+ * with each other.
+ *
+ * @returns Object with:
+ *   - state: Current playback state ('playing' | 'paused' | 'stopped')
+ *   - reason: Reason for the last state change
+ *   - isReady: Whether the initial state has been loaded
+ *
+ * @example
+ * ```tsx
+ * function PlaybackIndicator() {
+ *   const { state, reason, isReady } = useOnPlaybackStateChange()
+ *
+ *   if (!isReady) return <Text>Loading...</Text>
+ *
+ *   return (
+ *     <View>
+ *       <Text>State: {state}</Text>
+ *       {reason && <Text>Reason: {reason}</Text>}
+ *     </View>
+ *   )
+ * }
+ * ```
+ */
+export function useOnPlaybackStateChange(): PlaybackStateResult {
+  const [state, setState] = useState<TrackPlayerState>('stopped')
+  const [reason, setReason] = useState<Reason | undefined>(undefined)
+  const [isReady, setIsReady] = useState(false)
+  const isMounted = useRef(true)
+
+  // Initialize with current state from the player
   useEffect(() => {
-    TrackPlayer.onPlaybackStateChange((newState, newReason) => {
-      setState(newState)
-      setReason(newReason)
-    })
+    isMounted.current = true
+
+    // Get initial state synchronously
+    try {
+      const playerState = TrackPlayer.getState()
+      if (isMounted.current) {
+        setState(playerState.currentState)
+        setIsReady(true)
+      }
+    } catch (error) {
+      console.error(
+        '[useOnPlaybackStateChange] Failed to get initial state:',
+        error
+      )
+      if (isMounted.current) {
+        setState('stopped')
+        setIsReady(true)
+      }
+    }
+
+    return () => {
+      isMounted.current = false
+    }
   }, [])
 
-  return { state, reason }
+  // Subscribe to playback state changes
+  useEffect(() => {
+    const handleStateChange = (
+      newState: TrackPlayerState,
+      newReason?: Reason
+    ) => {
+      if (isMounted.current) {
+        setState(newState)
+        setReason(newReason)
+      }
+    }
+
+    const unsubscribe =
+      callbackManager.subscribeToPlaybackState(handleStateChange)
+
+    return () => {
+      unsubscribe()
+    }
+  }, [])
+
+  return { state, reason, isReady }
 }

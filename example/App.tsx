@@ -115,7 +115,7 @@ function AppContent() {
   // Use hooks to get player state directly
   const { track: currentTrack, reason: trackChangeReason } = useOnChangeTrack();
   const { devices: audioDevices } = useAudioDevices();
-  const { state: playbackState, reason: stateChangeReason } =
+  const { state: playbackState, reason: stateChangeReason, isReady: isStateReady } =
     useOnPlaybackStateChange();
   const { position: lastSeekPosition, totalDuration: lastSeekDuration } =
     useOnSeek();
@@ -135,10 +135,10 @@ function AppContent() {
   }, [currentTrack, trackChangeReason]);
 
   useEffect(() => {
-    if (playbackState !== undefined) {
+    if (isStateReady) {
       console.log('Playback state changed:', playbackState, stateChangeReason);
     }
-  }, [playbackState, stateChangeReason]);
+  }, [playbackState, stateChangeReason, isStateReady]);
 
   useEffect(() => {
     if (lastSeekPosition !== undefined) {
@@ -649,7 +649,7 @@ function AppContent() {
           </View>
 
           <Text style={styles.statusText}>
-            State: {playbackState !== undefined ? playbackState : 'None'}
+            State: {playbackState}
           </Text>
           {currentTrack && (
             <View style={styles.currentTrack}>
