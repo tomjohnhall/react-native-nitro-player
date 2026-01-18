@@ -3,6 +3,7 @@ package com.margelo.nitro.nitroplayer
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
+import com.margelo.nitro.core.Promise
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 
 class HybridTrackPlayer : HybridTrackPlayerSpec() {
@@ -26,14 +27,13 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         core.pause()
     }
 
-    @DoNotStrip
-    @Keep
     override fun playSong(
         songId: String,
         fromPlaylist: String?,
-    ) {
-        core.playSong(songId, fromPlaylist)
-    }
+    ): Promise<Unit> =
+        Promise.async {
+            core.playSong(songId, fromPlaylist)
+        }
 
     @DoNotStrip
     @Keep
@@ -53,44 +53,44 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         core.seek(position)
     }
 
-    @DoNotStrip
-    @Keep
-    override fun addToUpNext(trackId: String) {
-        core.addToUpNext(trackId)
-    }
+    override fun addToUpNext(trackId: String): Promise<Unit> =
+        Promise.async {
+            core.addToUpNext(trackId)
+        }
 
-    @DoNotStrip
-    @Keep
-    override fun playNext(trackId: String) {
-        core.playNext(trackId)
-    }
+    override fun playNext(trackId: String): Promise<Unit> =
+        Promise.async {
+            core.playNext(trackId)
+        }
 
-    @DoNotStrip
-    @Keep
-    override fun getActualQueue(): Array<TrackItem> = core.getActualQueue().toTypedArray()
+    override fun getActualQueue(): Promise<Array<TrackItem>> =
+        Promise.async {
+            core.getActualQueue().toTypedArray()
+        }
 
-    @DoNotStrip
-    @Keep
-    override fun getState(): PlayerState = core.getState()
+    override fun getState(): Promise<PlayerState> =
+        Promise.async {
+            core.getState()
+        }
 
     @DoNotStrip
     @Keep
     override fun setRepeatMode(mode: RepeatMode): Boolean = core.setRepeatMode(mode)
 
     override fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit) {
-        core.onChangeTrack = callback
+        core.addOnChangeTrackListener(callback)
     }
 
     override fun onPlaybackStateChange(callback: (state: TrackPlayerState, reason: Reason?) -> Unit) {
-        core.onPlaybackStateChange = callback
+        core.addOnPlaybackStateChangeListener(callback)
     }
 
     override fun onSeek(callback: (position: Double, totalDuration: Double) -> Unit) {
-        core.onSeek = callback
+        core.addOnSeekListener(callback)
     }
 
     override fun onPlaybackProgressChange(callback: (position: Double, totalDuration: Double, isManuallySeeked: Boolean?) -> Unit) {
-        core.onPlaybackProgressChange = callback
+        core.addOnPlaybackProgressChangeListener(callback)
     }
 
     @DoNotStrip
