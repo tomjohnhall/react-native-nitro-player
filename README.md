@@ -22,62 +22,83 @@ npm install react-native-nitro-modules
 
 ### React Hooks
 
-| Name | Platform | Description |
-|------|----------|-------------|
-| `useOnChangeTrack` | Both | Returns current track and change reason. Updates automatically. |
-| `useOnPlaybackStateChange` | Both | Returns current playback state (playing/paused) and change reason. |
-| `useOnPlaybackProgressChange` | Both | Returns real-time playback progress, duration, and seek status. |
-| `useOnSeek` | Both | Returns information about the last seek event (position/duration). |
-| `useNowPlaying` | Both | Returns complete player state (track, state, duration, playlist) in one object. |
-| `useActualQueue` | Both | Returns the efficient playback queue including temporary tracks. |
-| `usePlaylist` | Both | Manages playlist state, providing access to all playlists and tracks. |
-| `useAndroidAutoConnection` | Both | Monitors Android Auto connection status. |
-| `useAudioDevices` | Android | Returns list of available audio output devices. |
+| Name                          | Platform | Description                                                                     |
+| ----------------------------- | -------- | ------------------------------------------------------------------------------- |
+| `useOnChangeTrack`            | Both     | Returns current track and change reason. Updates automatically.                 |
+| `useOnPlaybackStateChange`    | Both     | Returns current playback state (playing/paused) and change reason.              |
+| `useOnPlaybackProgressChange` | Both     | Returns real-time playback progress, duration, and seek status.                 |
+| `useOnSeek`                   | Both     | Returns information about the last seek event (position/duration).              |
+| `useNowPlaying`               | Both     | Returns complete player state (track, state, duration, playlist) in one object. |
+| `useActualQueue`              | Both     | Returns the efficient playback queue including temporary tracks.                |
+| `usePlaylist`                 | Both     | Manages playlist state, providing access to all playlists and tracks.           |
+| `useAndroidAutoConnection`    | Both     | Monitors Android Auto connection status.                                        |
+| `useAudioDevices`             | Android  | Returns list of available audio output devices.                                 |
+| `useDownloadProgress`         | Both     | Tracks download progress for tracks. Returns progress map and overall status.   |
+| `useDownloadedTracks`         | Both     | Returns all downloaded tracks and playlists with query helpers.                 |
 
 ### TrackPlayer Methods
 
-| Name | Platform | Description |
-|------|----------|-------------|
-| `play()` | Both | Resumes playback. |
-| `pause()` | Both | Pauses playback. |
-| `playSong(id, playlistId?)` | Both | **Async**. Plays a specific song, optionally from a playlist. |
-| `skipToNext()` | Both | Skips to the next track in the queue. |
-| `skipToPrevious()` | Both | Skips to the previous track. |
-| `seek(position)` | Both | Seeks to a specific time position in seconds. |
-| `setVolume(0-100)` | Both | Sets playback volume (0-100). |
-| `setRepeatMode(mode)` | Both | Sets repeat mode (`off`, `track`, `Playlist`). |
-| `addToUpNext(id)` | Both | **Async**. Adds a track to the "up next" queue (FIFO). |
-| `playNext(id)` | Both | **Async**. Adds a track to the "play next" stack (LIFO). |
-| `getActualQueue()` | Both | **Async**. Gets the full playback queue including temporary tracks. |
-| `getState()` | Both | **Async**. Gets the current player state immediately. |
-| `configure(config)` | Both | Configures player settings (Android Auto, etc.). |
-| `isAndroidAutoConnected()` | Both | Checks if Android Auto is currently connected. |
+| Name                        | Platform | Description                                                         |
+| --------------------------- | -------- | ------------------------------------------------------------------- |
+| `play()`                    | Both     | Resumes playback.                                                   |
+| `pause()`                   | Both     | Pauses playback.                                                    |
+| `playSong(id, playlistId?)` | Both     | **Async**. Plays a specific song, optionally from a playlist.       |
+| `skipToNext()`              | Both     | Skips to the next track in the queue.                               |
+| `skipToPrevious()`          | Both     | Skips to the previous track.                                        |
+| `seek(position)`            | Both     | Seeks to a specific time position in seconds.                       |
+| `setVolume(0-100)`          | Both     | Sets playback volume (0-100).                                       |
+| `setRepeatMode(mode)`       | Both     | Sets repeat mode (`off`, `track`, `Playlist`).                      |
+| `addToUpNext(id)`           | Both     | **Async**. Adds a track to the "up next" queue (FIFO).              |
+| `playNext(id)`              | Both     | **Async**. Adds a track to the "play next" stack (LIFO).            |
+| `getActualQueue()`          | Both     | **Async**. Gets the full playback queue including temporary tracks. |
+| `getState()`                | Both     | **Async**. Gets the current player state immediately.               |
+| `configure(config)`         | Both     | Configures player settings (Android Auto, etc.).                    |
+| `isAndroidAutoConnected()`  | Both     | Checks if Android Auto is currently connected.                      |
 
 ### PlayerQueue Methods
 
-| Name | Platform | Description |
-|------|----------|-------------|
-| `createPlaylist(name, ...)` | Both | Creates a new playlist. Returns ID. |
-| `deletePlaylist(id)` | Both | Deletes a playlist by ID. |
-| `updatePlaylist(id, ...)` | Both | Updates playlist metadata (name, description, artwork). |
-| `getPlaylist(id)` | Both | Gets a specific playlist object. |
-| `getAllPlaylists()` | Both | Gets all available playlists. |
-| `loadPlaylist(id)` | Both | Loads a playlist for playback. |
-| `getCurrentPlaylistId()` | Both | Gets the ID of the currently playing playlist. |
-| `addTrackToPlaylist(pid, track)` | Both | Adds a track to a playlist. |
-| `addTracksToPlaylist(pid, tracks)` | Both | Adds multiple tracks to a playlist. |
-| `removeTrackFromPlaylist(pid, tid)` | Both | Removes a track from a playlist. |
-| `reorderTrackInPlaylist(pid, tid, idx)` | Both | Moves a track to a new position in the playlist. |
+| Name                                    | Platform | Description                                             |
+| --------------------------------------- | -------- | ------------------------------------------------------- |
+| `createPlaylist(name, ...)`             | Both     | Creates a new playlist. Returns ID.                     |
+| `deletePlaylist(id)`                    | Both     | Deletes a playlist by ID.                               |
+| `updatePlaylist(id, ...)`               | Both     | Updates playlist metadata (name, description, artwork). |
+| `getPlaylist(id)`                       | Both     | Gets a specific playlist object.                        |
+| `getAllPlaylists()`                     | Both     | Gets all available playlists.                           |
+| `loadPlaylist(id)`                      | Both     | Loads a playlist for playback.                          |
+| `getCurrentPlaylistId()`                | Both     | Gets the ID of the currently playing playlist.          |
+| `addTrackToPlaylist(pid, track)`        | Both     | Adds a track to a playlist.                             |
+| `addTracksToPlaylist(pid, tracks)`      | Both     | Adds multiple tracks to a playlist.                     |
+| `removeTrackFromPlaylist(pid, tid)`     | Both     | Removes a track from a playlist.                        |
+| `reorderTrackInPlaylist(pid, tid, idx)` | Both     | Moves a track to a new position in the playlist.        |
 
 ### Platform-Specific APIs
 
-| Name | Platform | Description |
-|------|----------|-------------|
-| `AudioDevices.getAudioDevices()` | Android | Returns list of available audio devices. |
-| `AudioDevices.setAudioDevice(id)` | Android | Sets the active audio output device. |
-| `AudioRoutePicker.showRoutePicker()` | iOS | Opens the native AirPlay/Audio Route picker menu. |
-| `AndroidAutoMediaLibraryHelper.set(...)` | Android | Sets custom folder structure for Android Auto. |
-| `AndroidAutoMediaLibraryHelper.clear()` | Android | Resets Android Auto structure to default. |
+| Name                                     | Platform | Description                                       |
+| ---------------------------------------- | -------- | ------------------------------------------------- |
+| `AudioDevices.getAudioDevices()`         | Android  | Returns list of available audio devices.          |
+| `AudioDevices.setAudioDevice(id)`        | Android  | Sets the active audio output device.              |
+| `AudioRoutePicker.showRoutePicker()`     | iOS      | Opens the native AirPlay/Audio Route picker menu. |
+| `AndroidAutoMediaLibraryHelper.set(...)` | Android  | Sets custom folder structure for Android Auto.    |
+| `AndroidAutoMediaLibraryHelper.clear()`  | Android  | Resets Android Auto structure to default.         |
+
+### DownloadManager Methods
+
+| Name                                   | Platform | Description                                                   |
+| -------------------------------------- | -------- | ------------------------------------------------------------- |
+| `configure(config)`                    | Both     | Configures download settings (storage, concurrency, etc.).    |
+| `downloadTrack(track, playlistId?)`    | Both     | **Async**. Downloads a track. Returns download ID.            |
+| `downloadPlaylist(playlistId, tracks)` | Both     | **Async**. Downloads all tracks in a playlist.                |
+| `pauseDownload(downloadId)`            | Both     | **Async**. Pauses an active download.                         |
+| `resumeDownload(downloadId)`           | Both     | **Async**. Resumes a paused download.                         |
+| `cancelDownload(downloadId)`           | Both     | **Async**. Cancels a download.                                |
+| `isTrackDownloaded(trackId)`           | Both     | Checks if a track is downloaded.                              |
+| `getAllDownloadedTracks()`             | Both     | Gets all downloaded tracks.                                   |
+| `deleteDownloadedTrack(trackId)`       | Both     | **Async**. Deletes a downloaded track.                        |
+| `getStorageInfo()`                     | Both     | **Async**. Gets download storage usage information.           |
+| `setPlaybackSourcePreference(pref)`    | Both     | Sets playback source: `'auto'`, `'download'`, or `'network'`. |
+
+> [!NOTE]
+> See [DOWNLOADS.md](./DOWNLOADS.md) for complete downloads API documentation.
 
 ## Quick Start
 
@@ -156,6 +177,32 @@ TrackPlayer.setVolume(100) // Maximum volume
 await TrackPlayer.addToUpNext('song-id') // Add to up-next queue (FIFO)
 await TrackPlayer.playNext('song-id') // Add to play-next stack (LIFO)
 ```
+
+### 4. Download for Offline Playback (Optional)
+
+```typescript
+import { DownloadManager } from 'react-native-nitro-player'
+
+// Configure downloads
+DownloadManager.configure({
+  maxConcurrentDownloads: 3,
+  backgroundDownloadsEnabled: true,
+  downloadArtwork: true,
+})
+
+// Download a track
+const downloadId = await DownloadManager.downloadTrack(track)
+
+// Download entire playlist
+const playlist = PlayerQueue.getPlaylist(playlistId)
+await DownloadManager.downloadPlaylist(playlist.id, playlist.tracks)
+
+// Set playback to prefer downloaded tracks
+DownloadManager.setPlaybackSourcePreference('auto')
+```
+
+> [!NOTE]
+> See [DOWNLOADS.md](./DOWNLOADS.md) for complete offline downloads documentation.
 
 ## Temporary Queue Management
 
@@ -919,6 +966,7 @@ AndroidAutoMediaLibraryHelper.set({
 - ✅ **CarPlay Support**: Control playback from CarPlay (iOS)
 - ✅ **Notification Controls**: Show playback controls in notifications
 - ✅ **Progress Tracking**: Real-time playback progress updates
+- ✅ **Offline Downloads**: Download tracks and playlists for offline playback
 
 ## TypeScript Support
 
@@ -937,6 +985,16 @@ import type {
   MediaItem,
   LayoutType,
   MediaType,
+  // Download types
+  DownloadConfig,
+  DownloadProgress,
+  DownloadedTrack,
+  DownloadedPlaylist,
+  DownloadTask,
+  DownloadState,
+  DownloadError,
+  DownloadStorageInfo,
+  PlaybackSource,
 } from 'react-native-nitro-player'
 ```
 
