@@ -686,16 +686,16 @@ class TrackPlayerCore: NSObject {
   {
     // Get effective URL - uses local path if downloaded, otherwise remote URL
     let effectiveUrlString = DownloadManagerCore.shared.getEffectiveUrl(track: track)
-    
+
     // Create URL - use fileURLWithPath for local files, URL(string:) for remote
     let url: URL
     let isLocal = effectiveUrlString.hasPrefix("/")
-    
+
     if isLocal {
       // Local file - use fileURLWithPath
       print("📥 TrackPlayerCore: Using DOWNLOADED version for \(track.title)")
       print("   Local path: \(effectiveUrlString)")
-      
+
       // Verify file exists
       if FileManager.default.fileExists(atPath: effectiveUrlString) {
         url = URL(fileURLWithPath: effectiveUrlString)
@@ -994,7 +994,8 @@ class TrackPlayerCore: NSObject {
     for (index, track) in tracks.enumerated() {
       let isDownloaded = DownloadManagerCore.shared.isTrackDownloaded(trackId: track.id)
       let downloadStatus = isDownloaded ? "📥 DOWNLOADED" : "🌐 REMOTE"
-      print("  [\(index + 1)] 🎵 \(track.title) - \(track.artist) (ID: \(track.id)) - \(downloadStatus)")
+      print(
+        "  [\(index + 1)] 🎵 \(track.title) - \(track.artist) (ID: \(track.id)) - \(downloadStatus)")
       if isDownloaded {
         if let localPath = DownloadManagerCore.shared.getLocalPath(trackId: track.id) {
           print("      Local path: \(localPath)")
@@ -1689,7 +1690,9 @@ class TrackPlayerCore: NSObject {
 
   private func playFromIndexInternalWithResult(index: Int) -> Bool {
     guard index >= 0 && index < self.currentTracks.count else {
-      print("❌ TrackPlayerCore: playFromIndex - invalid index \(index), currentTracks.count = \(self.currentTracks.count)")
+      print(
+        "❌ TrackPlayerCore: playFromIndex - invalid index \(index), currentTracks.count = \(self.currentTracks.count)"
+      )
       return false
     }
 
