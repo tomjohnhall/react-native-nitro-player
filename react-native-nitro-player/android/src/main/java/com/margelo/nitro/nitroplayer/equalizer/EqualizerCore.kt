@@ -3,6 +3,7 @@ package com.margelo.nitro.nitroplayer.equalizer
 import android.content.Context
 import android.content.SharedPreferences
 import android.media.audiofx.Equalizer
+import android.util.Log
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.EqualizerBand
 import com.margelo.nitro.nitroplayer.EqualizerPreset
@@ -12,11 +13,12 @@ import com.margelo.nitro.nitroplayer.PresetType
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
 import org.json.JSONArray
 import org.json.JSONObject
-import android.util.Log
 import java.lang.ref.WeakReference
 import java.util.Collections
 
-class EqualizerCore private constructor(private val context: Context) {
+class EqualizerCore private constructor(
+    private val context: Context,
+) {
     private var equalizer: Equalizer? = null
     private var audioSessionId: Int = 0
     private var isUsingFallbackSession: Boolean = false // Track if using fallback session 0
@@ -50,7 +52,7 @@ class EqualizerCore private constructor(private val context: Context) {
 
     companion object {
         private const val TAG = "EqualizerCore"
-        
+
         @Volatile
         private var INSTANCE: EqualizerCore? = null
 
@@ -60,23 +62,24 @@ class EqualizerCore private constructor(private val context: Context) {
             }
 
         // Built-in presets: name -> [60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz] in dB
-        private val BUILT_IN_PRESETS = mapOf(
-            "Flat" to doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0),
-            "Bass Boost" to doubleArrayOf(6.0, 4.0, 0.0, 0.0, 0.0),
-            "Bass Reducer" to doubleArrayOf(-6.0, -4.0, 0.0, 0.0, 0.0),
-            "Treble Boost" to doubleArrayOf(0.0, 0.0, 0.0, 4.0, 6.0),
-            "Treble Reducer" to doubleArrayOf(0.0, 0.0, 0.0, -4.0, -6.0),
-            "Vocal Boost" to doubleArrayOf(-2.0, 0.0, 4.0, 2.0, 0.0),
-            "Rock" to doubleArrayOf(5.0, 3.0, -1.0, 3.0, 5.0),
-            "Pop" to doubleArrayOf(-1.0, 2.0, 4.0, 2.0, -1.0),
-            "Jazz" to doubleArrayOf(3.0, 1.0, -2.0, 2.0, 4.0),
-            "Classical" to doubleArrayOf(4.0, 2.0, -1.0, 2.0, 3.0),
-            "Hip Hop" to doubleArrayOf(6.0, 4.0, 0.0, 1.0, 3.0),
-            "Electronic" to doubleArrayOf(5.0, 3.0, 0.0, 2.0, 5.0),
-            "Acoustic" to doubleArrayOf(4.0, 2.0, 1.0, 3.0, 3.0),
-            "R&B" to doubleArrayOf(3.0, 6.0, 2.0, -1.0, 2.0),
-            "Loudness" to doubleArrayOf(6.0, 3.0, -1.0, 3.0, 6.0),
-        )
+        private val BUILT_IN_PRESETS =
+            mapOf(
+                "Flat" to doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0),
+                "Bass Boost" to doubleArrayOf(6.0, 4.0, 0.0, 0.0, 0.0),
+                "Bass Reducer" to doubleArrayOf(-6.0, -4.0, 0.0, 0.0, 0.0),
+                "Treble Boost" to doubleArrayOf(0.0, 0.0, 0.0, 4.0, 6.0),
+                "Treble Reducer" to doubleArrayOf(0.0, 0.0, 0.0, -4.0, -6.0),
+                "Vocal Boost" to doubleArrayOf(-2.0, 0.0, 4.0, 2.0, 0.0),
+                "Rock" to doubleArrayOf(5.0, 3.0, -1.0, 3.0, 5.0),
+                "Pop" to doubleArrayOf(-1.0, 2.0, 4.0, 2.0, -1.0),
+                "Jazz" to doubleArrayOf(3.0, 1.0, -2.0, 2.0, 4.0),
+                "Classical" to doubleArrayOf(4.0, 2.0, -1.0, 2.0, 3.0),
+                "Hip Hop" to doubleArrayOf(6.0, 4.0, 0.0, 1.0, 3.0),
+                "Electronic" to doubleArrayOf(5.0, 3.0, 0.0, 2.0, 5.0),
+                "Acoustic" to doubleArrayOf(4.0, 2.0, 1.0, 3.0, 3.0),
+                "R&B" to doubleArrayOf(3.0, 6.0, 2.0, -1.0, 2.0),
+                "Loudness" to doubleArrayOf(6.0, 3.0, -1.0, 3.0, 6.0),
+            )
     }
 
     /**
@@ -89,9 +92,10 @@ class EqualizerCore private constructor(private val context: Context) {
 
         try {
             equalizer?.release()
-            equalizer = Equalizer(0, audioSessionId).apply {
-                enabled = false
-            }
+            equalizer =
+                Equalizer(0, audioSessionId).apply {
+                    enabled = false
+                }
             setupBandMapping()
             restoreSettings()
         } catch (e: Exception) {
@@ -109,7 +113,6 @@ class EqualizerCore private constructor(private val context: Context) {
         }
     }
 
-    
     private fun setupBandMapping() {
         val eq = equalizer ?: return
         val numBands = eq.numberOfBands.toInt()
@@ -151,25 +154,30 @@ class EqualizerCore private constructor(private val context: Context) {
     fun getBands(): Array<EqualizerBand> {
         val eq = equalizer ?: return emptyArray()
 
-        return (0 until 5).map { i ->
-            val actualBand = bandMapping[i].toShort()
-            val gainMb = try {
-                eq.getBandLevel(actualBand)
-            } catch (e: Exception) {
-                0.toShort()
-            }
-            val gainDb = gainMb / 100.0 // convert millibels to dB
+        return (0 until 5)
+            .map { i ->
+                val actualBand = bandMapping[i].toShort()
+                val gainMb =
+                    try {
+                        eq.getBandLevel(actualBand)
+                    } catch (e: Exception) {
+                        0.toShort()
+                    }
+                val gainDb = gainMb / 100.0 // convert millibels to dB
 
-            EqualizerBand(
-                index = i.toDouble(),
-                centerFrequency = frequencies[i].toDouble(),
-                gainDb = gainDb,
-                frequencyLabel = frequencyLabels[i]
-            )
-        }.toTypedArray()
+                EqualizerBand(
+                    index = i.toDouble(),
+                    centerFrequency = frequencies[i].toDouble(),
+                    gainDb = gainDb,
+                    frequencyLabel = frequencyLabels[i],
+                )
+            }.toTypedArray()
     }
 
-    fun setBandGain(bandIndex: Int, gainDb: Double): Boolean {
+    fun setBandGain(
+        bandIndex: Int,
+        gainDb: Double,
+    ): Boolean {
         if (bandIndex !in 0..4) return false
 
         val eq = equalizer ?: return false
@@ -225,7 +233,7 @@ class EqualizerCore private constructor(private val context: Context) {
             val range = eq.bandLevelRange
             GainRange(
                 min = (range[0] / 100.0).coerceAtLeast(-12.0),
-                max = (range[1] / 100.0).coerceAtMost(12.0)
+                max = (range[1] / 100.0).coerceAtMost(12.0),
             )
         } else {
             GainRange(min = -12.0, max = 12.0)
@@ -238,29 +246,33 @@ class EqualizerCore private constructor(private val context: Context) {
         return builtIn + custom
     }
 
-    fun getBuiltInPresets(): Array<EqualizerPreset> {
-        return BUILT_IN_PRESETS.map { (name, gains) ->
-            EqualizerPreset(
-                name = name,
-                gains = gains,
-                type = PresetType.BUILT_IN
-            )
-        }.toTypedArray()
-    }
+    fun getBuiltInPresets(): Array<EqualizerPreset> =
+        BUILT_IN_PRESETS
+            .map { (name, gains) ->
+                EqualizerPreset(
+                    name = name,
+                    gains = gains,
+                    type = PresetType.BUILT_IN,
+                )
+            }.toTypedArray()
 
     fun getCustomPresets(): Array<EqualizerPreset> {
         val customPresetsJson = prefs.getString("custom_presets", null) ?: return emptyArray()
         return try {
             val json = JSONObject(customPresetsJson)
-            json.keys().asSequence().map { name ->
-                val gainsArray = json.getJSONArray(name)
-                val gains = DoubleArray(5) { gainsArray.getDouble(it) }
-                EqualizerPreset(
-                    name = name,
-                    gains = gains,
-                    type = PresetType.CUSTOM
-                )
-            }.toList().toTypedArray()
+            json
+                .keys()
+                .asSequence()
+                .map { name ->
+                    val gainsArray = json.getJSONArray(name)
+                    val gains = DoubleArray(5) { gainsArray.getDouble(it) }
+                    EqualizerPreset(
+                        name = name,
+                        gains = gains,
+                        type = PresetType.CUSTOM,
+                    )
+                }.toList()
+                .toTypedArray()
         } catch (e: Exception) {
             emptyArray()
         }
@@ -268,9 +280,10 @@ class EqualizerCore private constructor(private val context: Context) {
 
     fun applyPreset(presetName: String): Boolean {
         // Try built-in preset first
-        val gains = BUILT_IN_PRESETS[presetName]
-            ?: getCustomPresetGains(presetName)
-            ?: return false
+        val gains =
+            BUILT_IN_PRESETS[presetName]
+                ?: getCustomPresetGains(presetName)
+                ?: return false
 
         if (setAllBandGains(gains)) {
             currentPresetName = presetName
@@ -288,7 +301,9 @@ class EqualizerCore private constructor(private val context: Context) {
             if (json.has(name)) {
                 val gainsArray = json.getJSONArray(name)
                 DoubleArray(5) { gainsArray.getDouble(it) }
-            } else null
+            } else {
+                null
+            }
         } catch (e: Exception) {
             null
         }
@@ -296,8 +311,8 @@ class EqualizerCore private constructor(private val context: Context) {
 
     fun getCurrentPresetName(): String? = currentPresetName
 
-    fun saveCustomPreset(name: String): Boolean {
-        return try {
+    fun saveCustomPreset(name: String): Boolean =
+        try {
             val currentGains = getAllGains()
             val customPresetsJson = prefs.getString("custom_presets", null)
             val json = if (customPresetsJson != null) JSONObject(customPresetsJson) else JSONObject()
@@ -314,7 +329,6 @@ class EqualizerCore private constructor(private val context: Context) {
         } catch (e: Exception) {
             false
         }
-    }
 
     fun deleteCustomPreset(name: String): Boolean {
         return try {
@@ -338,14 +352,14 @@ class EqualizerCore private constructor(private val context: Context) {
         }
     }
 
-    fun getState(): EqualizerState {
-        return EqualizerState(
+    fun getState(): EqualizerState =
+        EqualizerState(
             enabled = isEqualizerEnabled,
             bands = getBands(),
-            currentPreset = currentPresetName?.let { Variant_NullType_String.create(it) }
-                ?: Variant_NullType_String.create(NullType.NULL)
+            currentPreset =
+                currentPresetName?.let { Variant_NullType_String.create(it) }
+                    ?: Variant_NullType_String.create(NullType.NULL),
         )
-    }
 
     fun reset() {
         setAllBandGains(doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0))

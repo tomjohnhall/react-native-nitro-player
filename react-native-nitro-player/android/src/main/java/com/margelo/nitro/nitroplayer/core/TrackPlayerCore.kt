@@ -110,230 +110,231 @@ class TrackPlayerCore private constructor(
     init {
         // Run synchronously on main thread to avoid deadlock
         // when awaitInitialization is called from main thread
-        val initRunnable = Runnable {
-            // ============================================================
-            // GAPLESS PLAYBACK CONFIGURATION
-            // ============================================================
-            // Configure LoadControl for maximum gapless playback
-            // Large buffers ensure next track is fully ready before current ends
-            val loadControl =
-                DefaultLoadControl
-                    .Builder()
-                    .setBufferDurationsMs(
-                        30_000, // MIN_BUFFER_MS: 30 seconds minimum buffer
-                        120_000, // MAX_BUFFER_MS: 2 minutes maximum buffer (enables preloading next tracks)
-                        2_500, // BUFFER_FOR_PLAYBACK_MS: 2.5s before playback starts
-                        5_000, // BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS: 5s after rebuffer
-                    ).setBackBuffer(30_000, true) // Keep 30s back buffer for seamless seek-back
-                    .setTargetBufferBytes(C.LENGTH_UNSET) // No size limit - prioritize time
-                    .setPrioritizeTimeOverSizeThresholds(true) // Prioritize time-based buffering
-                    .build()
+        val initRunnable =
+            Runnable {
+                // ============================================================
+                // GAPLESS PLAYBACK CONFIGURATION
+                // ============================================================
+                // Configure LoadControl for maximum gapless playback
+                // Large buffers ensure next track is fully ready before current ends
+                val loadControl =
+                    DefaultLoadControl
+                        .Builder()
+                        .setBufferDurationsMs(
+                            30_000, // MIN_BUFFER_MS: 30 seconds minimum buffer
+                            120_000, // MAX_BUFFER_MS: 2 minutes maximum buffer (enables preloading next tracks)
+                            2_500, // BUFFER_FOR_PLAYBACK_MS: 2.5s before playback starts
+                            5_000, // BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS: 5s after rebuffer
+                        ).setBackBuffer(30_000, true) // Keep 30s back buffer for seamless seek-back
+                        .setTargetBufferBytes(C.LENGTH_UNSET) // No size limit - prioritize time
+                        .setPrioritizeTimeOverSizeThresholds(true) // Prioritize time-based buffering
+                        .build()
 
-            // Configure audio attributes for optimal music playback
-            // This enables gapless audio processing in the audio pipeline
-            val audioAttributes =
-                AudioAttributes
-                    .Builder()
-                    .setUsage(C.USAGE_MEDIA)
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                    .build()
+                // Configure audio attributes for optimal music playback
+                // This enables gapless audio processing in the audio pipeline
+                val audioAttributes =
+                    AudioAttributes
+                        .Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                        .build()
 
-            player =
-                ExoPlayer
-                    .Builder(context)
-                    .setLoadControl(loadControl)
-                    .setAudioAttributes(audioAttributes, true) // handleAudioFocus = true for gapless
-                    .setHandleAudioBecomingNoisy(true) // Pause when headphones disconnected
-                    .setPauseAtEndOfMediaItems(false) // Don't pause between items - key for gapless!
-                    .build()
+                player =
+                    ExoPlayer
+                        .Builder(context)
+                        .setLoadControl(loadControl)
+                        .setAudioAttributes(audioAttributes, true) // handleAudioFocus = true for gapless
+                        .setHandleAudioBecomingNoisy(true) // Pause when headphones disconnected
+                        .setPauseAtEndOfMediaItems(false) // Don't pause between items - key for gapless!
+                        .build()
 
-            mediaSessionManager =
-                MediaSessionManager(context, player, playlistManager).apply {
-                    setTrackPlayerCore(this@TrackPlayerCore)
-                }
-
-            // Set references for MediaBrowserService
-            NitroPlayerMediaBrowserService.trackPlayerCore = this
-            NitroPlayerMediaBrowserService.mediaSessionManager = mediaSessionManager
-
-            // Initialize Android Auto connection detector
-            androidAutoConnectionDetector =
-                AndroidAutoConnectionDetector(context).apply {
-                    onConnectionChanged = { connected, connectionType ->
-                        handler.post {
-                            isAndroidAutoConnected = connected
-                            NitroPlayerMediaBrowserService.isAndroidAutoConnected = connected
-
-                            // Notify JavaScript
-                            onAndroidAutoConnectionChange?.invoke(connected)
-
-                            println("🚗 Android Auto connection changed: connected=$connected, type=$connectionType")
-                        }
+                mediaSessionManager =
+                    MediaSessionManager(context, player, playlistManager).apply {
+                        setTrackPlayerCore(this@TrackPlayerCore)
                     }
-                    registerCarConnectionReceiver()
-                }
 
-            player.addListener(
-                object : Player.Listener {
-                    override fun onMediaItemTransition(
-                        mediaItem: MediaItem?,
-                        reason: Int,
-                    ) {
-                        println("\n🔄 onMediaItemTransition called")
-                        println(
-                            "   reason: ${when (reason) {
-                                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> "AUTO (track ended)"
-                                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> "SEEK"
-                                Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> "PLAYLIST_CHANGED"
-                                Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> "REPEAT"
-                                else -> "UNKNOWN($reason)"
-                            }}",
-                        )
-                        println("   previousMediaItem: ${previousMediaItem?.mediaId}")
-                        println("   new mediaItem: ${mediaItem?.mediaId}")
-                        println("   playNextStack: ${playNextStack.map { it.id }}")
-                        println("   upNextQueue: ${upNextQueue.map { it.id }}")
+                // Set references for MediaBrowserService
+                NitroPlayerMediaBrowserService.trackPlayerCore = this
+                NitroPlayerMediaBrowserService.mediaSessionManager = mediaSessionManager
 
-                        // Remove finished track from temporary lists
-                        // Handle AUTO (natural end) and SEEK (skip next) transitions
-                        if ((
-                                reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
-                                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
-                            ) &&
-                            previousMediaItem != null
+                // Initialize Android Auto connection detector
+                androidAutoConnectionDetector =
+                    AndroidAutoConnectionDetector(context).apply {
+                        onConnectionChanged = { connected, connectionType ->
+                            handler.post {
+                                isAndroidAutoConnected = connected
+                                NitroPlayerMediaBrowserService.isAndroidAutoConnected = connected
+
+                                // Notify JavaScript
+                                onAndroidAutoConnectionChange?.invoke(connected)
+
+                                println("🚗 Android Auto connection changed: connected=$connected, type=$connectionType")
+                            }
+                        }
+                        registerCarConnectionReceiver()
+                    }
+
+                player.addListener(
+                    object : Player.Listener {
+                        override fun onMediaItemTransition(
+                            mediaItem: MediaItem?,
+                            reason: Int,
                         ) {
-                            previousMediaItem?.mediaId?.let { mediaId ->
-                                val trackId = extractTrackId(mediaId)
-                                println("🏁 Track finished/skipped, checking for removal: $trackId")
+                            println("\n🔄 onMediaItemTransition called")
+                            println(
+                                "   reason: ${when (reason) {
+                                    Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> "AUTO (track ended)"
+                                    Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> "SEEK"
+                                    Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> "PLAYLIST_CHANGED"
+                                    Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> "REPEAT"
+                                    else -> "UNKNOWN($reason)"
+                                }}",
+                            )
+                            println("   previousMediaItem: ${previousMediaItem?.mediaId}")
+                            println("   new mediaItem: ${mediaItem?.mediaId}")
+                            println("   playNextStack: ${playNextStack.map { it.id }}")
+                            println("   upNextQueue: ${upNextQueue.map { it.id }}")
 
-                                // Find and remove from playNext stack (like iOS does)
-                                val playNextIndex = playNextStack.indexOfFirst { it.id == trackId }
-                                if (playNextIndex >= 0) {
-                                    val track = playNextStack.removeAt(playNextIndex)
-                                    println("   ✅ Removed from playNext stack: ${track.title}")
-                                } else {
-                                    // Find and remove from upNext queue
-                                    val upNextIndex = upNextQueue.indexOfFirst { it.id == trackId }
-                                    if (upNextIndex >= 0) {
-                                        val track = upNextQueue.removeAt(upNextIndex)
-                                        println("   ✅ Removed from upNext queue: ${track.title}")
+                            // Remove finished track from temporary lists
+                            // Handle AUTO (natural end) and SEEK (skip next) transitions
+                            if ((
+                                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+                                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+                                ) &&
+                                previousMediaItem != null
+                            ) {
+                                previousMediaItem?.mediaId?.let { mediaId ->
+                                    val trackId = extractTrackId(mediaId)
+                                    println("🏁 Track finished/skipped, checking for removal: $trackId")
+
+                                    // Find and remove from playNext stack (like iOS does)
+                                    val playNextIndex = playNextStack.indexOfFirst { it.id == trackId }
+                                    if (playNextIndex >= 0) {
+                                        val track = playNextStack.removeAt(playNextIndex)
+                                        println("   ✅ Removed from playNext stack: ${track.title}")
                                     } else {
-                                        println("   ℹ️  Was an original playlist track")
+                                        // Find and remove from upNext queue
+                                        val upNextIndex = upNextQueue.indexOfFirst { it.id == trackId }
+                                        if (upNextIndex >= 0) {
+                                            val track = upNextQueue.removeAt(upNextIndex)
+                                            println("   ✅ Removed from upNext queue: ${track.title}")
+                                        } else {
+                                            println("   ℹ️  Was an original playlist track")
+                                        }
+                                    }
+                                }
+                            } else {
+                                println("   ⏭️  Skipping removal (reason=$reason, prev=${previousMediaItem != null})")
+                            }
+
+                            // Store current item as previous for next transition
+                            previousMediaItem = mediaItem
+
+                            // Update temporary type for current track
+                            currentTemporaryType = determineCurrentTemporaryType()
+                            println("   Updated currentTemporaryType: $currentTemporaryType")
+
+                            // Update currentTrackIndex when we land on an original playlist track
+                            if (currentTemporaryType == TemporaryType.NONE && mediaItem != null) {
+                                val trackId = extractTrackId(mediaItem.mediaId)
+                                val newIndex = currentTracks.indexOfFirst { it.id == trackId }
+                                if (newIndex >= 0 && newIndex != currentTrackIndex) {
+                                    println("   📍 Updating currentTrackIndex from $currentTrackIndex to $newIndex")
+                                    currentTrackIndex = newIndex
+                                }
+                            }
+
+                            // Handle playlist switching if needed
+                            mediaItem?.mediaId?.let { mediaId ->
+                                if (mediaId.contains(':')) {
+                                    val colonIndex = mediaId.indexOf(':')
+                                    val playlistId = mediaId.substring(0, colonIndex)
+                                    if (playlistId != currentPlaylistId) {
+                                        // Track from different playlist - ensure playlist is loaded
+                                        val playlist = playlistManager.getPlaylist(playlistId)
+                                        if (playlist != null && currentPlaylistId != playlistId) {
+                                            // This shouldn't happen if playlists are loaded correctly,
+                                            // but handle it as a safety measure
+                                            println(
+                                                "⚠️ TrackPlayerCore: Detected track from different playlist, updating...",
+                                            )
+                                        }
                                     }
                                 }
                             }
-                        } else {
-                            println("   ⏭️  Skipping removal (reason=$reason, prev=${previousMediaItem != null})")
-                        }
 
-                        // Store current item as previous for next transition
-                        previousMediaItem = mediaItem
-
-                        // Update temporary type for current track
-                        currentTemporaryType = determineCurrentTemporaryType()
-                        println("   Updated currentTemporaryType: $currentTemporaryType")
-
-                        // Update currentTrackIndex when we land on an original playlist track
-                        if (currentTemporaryType == TemporaryType.NONE && mediaItem != null) {
-                            val trackId = extractTrackId(mediaItem.mediaId)
-                            val newIndex = currentTracks.indexOfFirst { it.id == trackId }
-                            if (newIndex >= 0 && newIndex != currentTrackIndex) {
-                                println("   📍 Updating currentTrackIndex from $currentTrackIndex to $newIndex")
-                                currentTrackIndex = newIndex
-                            }
-                        }
-
-                        // Handle playlist switching if needed
-                        mediaItem?.mediaId?.let { mediaId ->
-                            if (mediaId.contains(':')) {
-                                val colonIndex = mediaId.indexOf(':')
-                                val playlistId = mediaId.substring(0, colonIndex)
-                                if (playlistId != currentPlaylistId) {
-                                    // Track from different playlist - ensure playlist is loaded
-                                    val playlist = playlistManager.getPlaylist(playlistId)
-                                    if (playlist != null && currentPlaylistId != playlistId) {
-                                        // This shouldn't happen if playlists are loaded correctly,
-                                        // but handle it as a safety measure
-                                        println(
-                                            "⚠️ TrackPlayerCore: Detected track from different playlist, updating...",
-                                        )
+                            // Use getCurrentTrack() which handles temporary tracks properly
+                            val track = getCurrentTrack()
+                            if (track != null) {
+                                val r =
+                                    when (reason) {
+                                        Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> Reason.END
+                                        Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> Reason.USER_ACTION
+                                        Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> Reason.USER_ACTION
+                                        else -> null
                                     }
-                                }
+                                notifyTrackChange(track, r)
+                                mediaSessionManager?.onTrackChanged()
                             }
                         }
 
-                        // Use getCurrentTrack() which handles temporary tracks properly
-                        val track = getCurrentTrack()
-                        if (track != null) {
+                        override fun onTimelineChanged(
+                            timeline: androidx.media3.common.Timeline,
+                            reason: Int,
+                        ) {
+                            if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
+                                // Playlist changed - update MediaBrowserService
+                                NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
+                            }
+                        }
+
+                        override fun onPlayWhenReadyChanged(
+                            playWhenReady: Boolean,
+                            reason: Int,
+                        ) {
                             val r =
                                 when (reason) {
-                                    Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> Reason.END
-                                    Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> Reason.USER_ACTION
-                                    Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> Reason.USER_ACTION
+                                    Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST -> Reason.USER_ACTION
                                     else -> null
                                 }
-                            notifyTrackChange(track, r)
-                            mediaSessionManager?.onTrackChanged()
+                            emitStateChange(r)
                         }
-                    }
 
-                    override fun onTimelineChanged(
-                        timeline: androidx.media3.common.Timeline,
-                        reason: Int,
-                    ) {
-                        if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
-                            // Playlist changed - update MediaBrowserService
-                            NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
+                        override fun onPlaybackStateChanged(playbackState: Int) {
+                            emitStateChange()
                         }
-                    }
 
-                    override fun onPlayWhenReadyChanged(
-                        playWhenReady: Boolean,
-                        reason: Int,
-                    ) {
-                        val r =
-                            when (reason) {
-                                Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST -> Reason.USER_ACTION
-                                else -> null
-                            }
-                        emitStateChange(r)
-                    }
-
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        emitStateChange()
-                    }
-
-                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-                        emitStateChange()
-                    }
-
-                    override fun onPositionDiscontinuity(
-                        oldPosition: Player.PositionInfo,
-                        newPosition: Player.PositionInfo,
-                        reason: Int,
-                    ) {
-                        if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-                            isManuallySeeked = true
-                            notifySeek(newPosition.positionMs / 1000.0, player.duration / 1000.0)
+                        override fun onIsPlayingChanged(isPlaying: Boolean) {
+                            emitStateChange()
                         }
-                    }
 
-                    override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                        if (audioSessionId != 0) {
-                            try {
-                                EqualizerCore.getInstance(context).initialize(audioSessionId)
-                            } catch (e: Exception) {
-                                // Equalizer initialization failed - non-critical
+                        override fun onPositionDiscontinuity(
+                            oldPosition: Player.PositionInfo,
+                            newPosition: Player.PositionInfo,
+                            reason: Int,
+                        ) {
+                            if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+                                isManuallySeeked = true
+                                notifySeek(newPosition.positionMs / 1000.0, player.duration / 1000.0)
                             }
                         }
-                    }
-                },
-            )
 
-            // Start progress updates
-            handler.post(progressUpdateRunnable)
-        }
-        
+                        override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                            if (audioSessionId != 0) {
+                                try {
+                                    EqualizerCore.getInstance(context).initialize(audioSessionId)
+                                } catch (e: Exception) {
+                                    // Equalizer initialization failed - non-critical
+                                }
+                            }
+                        }
+                    },
+                )
+
+                // Start progress updates
+                handler.post(progressUpdateRunnable)
+            }
+
         // Execute on main thread: if already on main thread, run synchronously to avoid deadlock
         if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
             initRunnable.run()

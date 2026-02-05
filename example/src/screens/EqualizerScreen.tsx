@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
     StyleSheet,
     View,
@@ -11,7 +11,7 @@ import {
     Alert,
 } from 'react-native';
 import { useEqualizer, useEqualizerPresets } from 'react-native-nitro-player';
-import { colors, commonStyles, spacing, borderRadius, typography } from '../styles/theme';
+import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
 import { VerticalSlider } from '../components/VerticalSlider';
 
 export default function EqualizerScreen() {
@@ -34,7 +34,7 @@ export default function EqualizerScreen() {
         deleteCustomPreset,
     } = useEqualizerPresets();
 
-    const [customPresetName, setCustomPresetName] = useState('');
+
 
     if (isLoading || presetsLoading) {
         return (
@@ -91,7 +91,7 @@ export default function EqualizerScreen() {
 
     return (
         <SafeAreaView style={commonStyles.container}>
-            <ScrollView style={commonStyles.scrollView} contentContainerStyle={{ paddingBottom: 50 }}>
+            <ScrollView style={commonStyles.scrollView} contentContainerStyle={styles.scrollContent}>
                 {/* Warning when TrackPlayer not initialized */}
                 {hasNoBands && (
                     <View style={styles.warningBanner}>
@@ -116,7 +116,7 @@ export default function EqualizerScreen() {
                                             'Please load and play a track first before enabling the equalizer.'
                                         );
                                     }
-                                } catch (error) {
+                                } catch {
                                     Alert.alert(
                                         'Cannot Enable Equalizer',
                                         'Please load and play a track first before enabling the equalizer.'
@@ -306,5 +306,8 @@ const styles = StyleSheet.create({
         color: '#856404',
         textAlign: 'center',
         fontWeight: '500',
+    },
+    scrollContent: {
+        paddingBottom: 50,
     },
 });

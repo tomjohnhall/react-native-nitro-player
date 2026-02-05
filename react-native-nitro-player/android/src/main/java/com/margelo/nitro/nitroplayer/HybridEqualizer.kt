@@ -35,8 +35,10 @@ class HybridEqualizer : HybridEqualizerSpec() {
 
     @DoNotStrip
     @Keep
-    override fun setBandGain(bandIndex: Double, gainDb: Double): Boolean =
-        core.setBandGain(bandIndex.toInt(), gainDb)
+    override fun setBandGain(
+        bandIndex: Double,
+        gainDb: Double,
+    ): Boolean = core.setBandGain(bandIndex.toInt(), gainDb)
 
     @DoNotStrip
     @Keep
