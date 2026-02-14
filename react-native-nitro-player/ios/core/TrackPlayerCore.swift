@@ -694,9 +694,9 @@ class TrackPlayerCore: NSObject {
   // MARK: - Gapless Playback Helpers
 
   /// Creates a gapless-optimized AVPlayerItem with proper buffering configuration
-  private func createGaplessPlayerItem(
-    for track: TrackItem, isPreload: Bool = false, needsPreciseTiming: Bool = false
-  ) -> AVPlayerItem? {
+  private func createGaplessPlayerItem(for track: TrackItem, isPreload: Bool = false)
+    -> AVPlayerItem?
+  {
     // Get effective URL - uses local path if downloaded, otherwise remote URL
     let effectiveUrlString = DownloadManagerCore.shared.getEffectiveUrl(track: track)
 
@@ -739,11 +739,11 @@ class TrackPlayerCore: NSObject {
       asset = preloadedAsset
       print("🚀 TrackPlayerCore: Using preloaded asset for \(track.title)")
     } else {
-      // Create asset — only request precise timing for upcoming tracks (not the first track).
-      // Precise timing requires deep file scanning which delays readyToPlay on the first item.
-      let assetOptions: [String: Any] = needsPreciseTiming
-        ? [AVURLAssetPreferPreciseDurationAndTimingKey: true] : [:]
-      asset = AVURLAsset(url: url, options: assetOptions)
+      // No AVURLAssetPreferPreciseDurationAndTimingKey — gapless playback is achieved via
+      // AVQueuePlayer's internal audio buffer pre-roll, not timing metadata.
+      // Precise timing only helps with accurate VBR duration display, at the cost of
+      // deep file scanning that delays readyToPlay.
+      asset = AVURLAsset(url: url)
     }
 
     let item = AVPlayerItem(asset: asset)
@@ -809,11 +809,7 @@ class TrackPlayerCore: NSObject {
 
         guard let url = URL(string: track.url) else { continue }
 
-        let asset = AVURLAsset(
-          url: url,
-          options: [
-            AVURLAssetPreferPreciseDurationAndTimingKey: true
-          ])
+        let asset = AVURLAsset(url: url)
 
         // Preload essential keys for gapless playback
         asset.loadValuesAsynchronously(forKeys: Constants.preloadAssetKeys) { [weak self] in
@@ -1035,12 +1031,10 @@ class TrackPlayerCore: NSObject {
     // Clear old preloaded assets when loading new queue
     preloadedAssets.removeAll()
 
-    // Create gapless-optimized AVPlayerItems from tracks.
-    // First track (index 0) skips precise timing so readyToPlay fires immediately.
-    // Subsequent tracks use precise timing for accurate gapless duration info.
+    // Create gapless-optimized AVPlayerItems from tracks
     let items = tracks.enumerated().compactMap { (index, track) -> AVPlayerItem? in
       let isPreload = index < Constants.gaplessPreloadCount
-      return createGaplessPlayerItem(for: track, isPreload: isPreload, needsPreciseTiming: index > 0)
+      return createGaplessPlayerItem(for: track, isPreload: isPreload)
     }
 
     print("🎵 TrackPlayerCore: Created \(items.count) gapless-optimized player items")
@@ -1723,12 +1717,10 @@ class TrackPlayerCore: NSObject {
       "   🔄 Creating gapless queue with \(tracksToPlay.count) tracks starting from index \(index)"
     )
 
-    // Create gapless-optimized player items.
-    // offset 0 is the track about to play — skip precise timing so readyToPlay fires immediately.
+    // Create gapless-optimized player items
     let items = tracksToPlay.enumerated().compactMap { (offset, track) -> AVPlayerItem? in
       let isPreload = offset < Constants.gaplessPreloadCount
-      return self.createGaplessPlayerItem(
-        for: track, isPreload: isPreload, needsPreciseTiming: offset > 0)
+      return self.createGaplessPlayerItem(for: track, isPreload: isPreload)
     }
 
     guard let player = self.player, !items.isEmpty else {
