@@ -2,6 +2,8 @@
 
 A powerful audio player library for React Native with playlist management, playback controls, and support for Android Auto and CarPlay.
 
+Documentation: [https://nitroplayer.riteshshukla.in/](https://nitroplayer.riteshshukla.in/)
+
 ## Installation
 
 ```bash
