@@ -1,6 +1,7 @@
 package com.margelo.nitro.nitroplayer.download
 
 import android.content.Context
+import com.margelo.nitro.core.AnyMap
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.*
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
@@ -18,6 +19,7 @@ class DownloadDatabase private constructor(
 ) {
     companion object {
         private const val TAG = "DownloadDatabase"
+
         // Legacy SharedPreferences keys (migration only)
         private const val LEGACY_PREFS_NAME = "NitroPlayerDownloads"
         private const val LEGACY_KEY_DOWNLOADED_TRACKS = "downloaded_tracks"
@@ -304,10 +306,11 @@ class DownloadDatabase private constructor(
                 playlistJson.put(playlistId, JSONArray(trackIds.toList()))
             }
 
-            val wrapper = JSONObject().apply {
-                put("downloadedTracks", tracksJson)
-                put("playlistTracks", playlistJson)
-            }
+            val wrapper =
+                JSONObject().apply {
+                    put("downloadedTracks", tracksJson)
+                    put("playlistTracks", playlistJson)
+                }
             NitroPlayerStorage.write(context, "downloads.json", wrapper.toString())
         } catch (e: Exception) {
             e.printStackTrace()
@@ -390,8 +393,14 @@ class DownloadDatabase private constructor(
     }
 
     // Conversion Helpers
-    private fun trackItemToRecord(track: TrackItem): TrackItemRecord =
-        TrackItemRecord(
+    private fun trackItemToRecord(track: TrackItem): TrackItemRecord {
+        val extraPayloadJson =
+            track.extraPayload?.let { payload ->
+                val extraPayloadMap = payload.toHashMap()
+                JSONObject(extraPayloadMap)
+            }
+
+        return TrackItemRecord(
             id = track.id,
             title = track.title,
             artist = track.artist,
@@ -399,7 +408,9 @@ class DownloadDatabase private constructor(
             duration = track.duration,
             url = track.url,
             artwork = track.artwork?.asSecondOrNull(),
+            extraPayload = extraPayloadJson,
         )
+    }
 
     private fun recordToTrackItem(record: TrackItemRecord): TrackItem {
         val artworkVariant =
@@ -407,6 +418,21 @@ class DownloadDatabase private constructor(
                 Variant_NullType_String.create(record.artwork)
             } else {
                 null
+            }
+
+        val extraPayload: AnyMap? =
+            record.extraPayload?.let { extraPayloadJson ->
+                val map = AnyMap()
+                val keyIterator = extraPayloadJson.keys()
+                while (keyIterator.hasNext()) {
+                    val key = keyIterator.next()
+                    when (val value = extraPayloadJson.get(key)) {
+                        is String -> map.setString(key, value)
+                        is Number -> map.setDouble(key, value.toDouble())
+                        is Boolean -> map.setBoolean(key, value)
+                    }
+                }
+                map
             }
 
         return TrackItem(
@@ -417,7 +443,7 @@ class DownloadDatabase private constructor(
             duration = record.duration,
             url = record.url,
             artwork = artworkVariant,
-            extraPayload = null,
+            extraPayload = extraPayload,
         )
     }
 
@@ -440,15 +466,14 @@ class DownloadDatabase private constructor(
         )
     }
 
-    private fun convertPlaylistManagerToNitro(playlist: com.margelo.nitro.nitroplayer.playlist.Playlist): Playlist {
-        return Playlist(
+    private fun convertPlaylistManagerToNitro(playlist: com.margelo.nitro.nitroplayer.playlist.Playlist): Playlist =
+        Playlist(
             id = playlist.id,
             name = playlist.name,
             description = null,
             artwork = null,
             tracks = playlist.tracks.toTypedArray(),
         )
-    }
 }
 
 // Internal record classes
@@ -494,6 +519,7 @@ internal data class TrackItemRecord(
     val duration: Double,
     val url: String,
     val artwork: String?,
+    val extraPayload: JSONObject?,
 ) {
     fun toJson(): JSONObject =
         JSONObject().apply {
@@ -504,6 +530,7 @@ internal data class TrackItemRecord(
             put("duration", duration)
             put("url", url)
             put("artwork", artwork)
+            put("extraPayload", extraPayload)
         }
 
     companion object {
@@ -516,6 +543,12 @@ internal data class TrackItemRecord(
                 duration = json.getDouble("duration"),
                 url = json.getString("url"),
                 artwork = if (json.isNull("artwork")) null else json.getString("artwork"),
+                extraPayload =
+                    if (json.has("extraPayload") && !json.isNull("extraPayload")) {
+                        json.getJSONObject("extraPayload")
+                    } else {
+                        null
+                    },
             )
     }
 }
