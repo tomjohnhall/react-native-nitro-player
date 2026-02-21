@@ -1,6 +1,6 @@
 {
   "name": "example",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -23,7 +23,7 @@
     "react-native-nitro-player": "../react-native-nitro-player",
     "react-native-safe-area-context": "^5.6.2",
     "react-native-screens": "^4.19.0"
-    },
+  },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
