@@ -1623,6 +1623,35 @@ class TrackPlayerCore private constructor(
             if (currentPlaylistId != null && affectedPlaylists.containsKey(currentPlaylistId)) {
                 NitroPlayerLogger.log("TrackPlayerCore") { "🔄 Rebuilding queue - ${affectedPlaylists[currentPlaylistId]} tracks updated in current playlist" }
 
+                // PlaylistManager.updateTracks() creates a new Playlist via .copy(tracks = newTracks),
+                // so our currentTracks reference still points at the old list with empty URLs.
+                // Refresh it now so rebuildQueueFromCurrentPosition builds MediaItems with the
+                // resolved URLs, allowing ExoPlayer to pre-buffer the next track for gapless playback.
+                val refreshedPlaylist = playlistManager.getPlaylist(currentPlaylistId!!)
+                if (refreshedPlaylist != null) {
+                    currentTracks = refreshedPlaylist.tracks
+
+                    // Also reconcile any queued items that still reference old TrackItem instances
+                    // from this playlist, so that gapless pre-buffering uses tracks with resolved URLs.
+                    val updatedTrackById = currentTracks.associateBy { it.id }
+
+                    // Update playNextStack entries to point at the refreshed TrackItem objects.
+                    playNextStack.forEachIndexed { index, track ->
+                        val updated = updatedTrackById[track.id]
+                        if (updated != null && updated !== track) {
+                            playNextStack[index] = updated
+                        }
+                    }
+
+                    // Update upNextQueue entries to point at the refreshed TrackItem objects.
+                    upNextQueue.forEachIndexed { index, track ->
+                        val updated = updatedTrackById[track.id]
+                        if (updated != null && updated !== track) {
+                            upNextQueue[index] = updated
+                        }
+                    }
+                }
+
                 // This method preserves current item and gapless buffering
                 rebuildQueueFromCurrentPosition()
 
