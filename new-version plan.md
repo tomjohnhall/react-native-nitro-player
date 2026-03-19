@@ -1565,7 +1565,1182 @@ iOS:     throw NitroPlayerError.xyz           →  JS Error("msg")
 | `getBands()`, `getState()` | sync | `Promise<T>` | Player thread |
 | `reset()` | `void` | `Promise<void>` | Player thread |
 
-## Appendix B: Risk Assessment
+## Appendix B: React Hooks — Robust Implementation Guide
+
+This section specifies exactly how `useActualQueue`, `useNowPlaying`, and `useOnPlaybackProgressChange` must be implemented in v2. The design principles are:
+
+1. **Event-driven only.** No `setTimeout`, no `setInterval`, no polling, no artificial delays.
+2. **Single source of truth = native events.** The native player thread is the authority. JS never constructs state from multiple async fetches that could race.
+3. **Batch state updates.** One state object per hook → one re-render per event, not N re-renders for N fields.
+4. **No stale window.** Between mount and first event, the hook fetches initial state once. A version counter discards stale fetches if an event arrives before the fetch resolves.
+
+### B.1 Current Problems
+
+| Hook | Problem | Impact |
+|------|---------|--------|
+| `useActualQueue` | `setTimeout(updateQueue, 50)` after track change | Hack. 50ms is arbitrary. Queue can still be stale if native rebuild takes longer. |
+| `useActualQueue` | Re-fetches entire queue on every track change AND state change | Wasteful. State changes (play/pause) don't change the queue order. |
+| `useActualQueue` | No listener for temp queue changes | After `playNext()`/`addToUpNext()`, user must manually call `refreshQueue()` with another `setTimeout` |
+| `useNowPlaying` | Calls `getState()` on every track change AND state change | Double async fetch per event. Race condition: event fires, fetch starts, another event fires, first fetch resolves with stale data. |
+| `useNowPlaying` | 4 separate `useEffect` hooks subscribing to 4 different events | Complex. Each triggers an independent `setState`. Multiple re-renders per logical state change. |
+| `useOnPlaybackProgressChange` | 3 separate `useState` calls | 3 re-renders per progress tick (position, duration, isManuallySeeked). At 4 ticks/sec = 12 re-renders/sec. |
+| `callbackManager` | Never unregisters native callbacks | Memory leak. Native side accumulates dead callback references. |
+| All hooks | `isMounted` ref pattern | Unnecessary with proper cleanup. React 18 batches updates. The ref is a workaround for poor architecture. |
+
+### B.2 v2 CallbackManager
+
+The v2 `callbackManager` is the fan-out layer between native (which supports one callback per event type) and React (which has many hook instances).
+
+```typescript
+// callbackManager.ts
+
+import { TrackPlayer } from '../index'
+import type {
+  TrackItem,
+  TrackPlayerState,
+  Reason,
+  PlayerState,
+} from '../types/PlayerQueue'
+
+type Unsubscribe = () => void
+
+class CallbackManager {
+  // Subscriber sets
+  private trackChange = new Set<(track: TrackItem, reason?: Reason) => void>()
+  private playbackState = new Set<(state: TrackPlayerState, reason?: Reason) => void>()
+  private progress = new Set<(position: number, duration: number, isSeeked?: boolean) => void>()
+  private seek = new Set<(position: number, duration: number) => void>()
+  private tempQueueChange = new Set<(playNext: TrackItem[], upNext: TrackItem[]) => void>()
+
+  // Registration flags
+  private registered = {
+    trackChange: false,
+    playbackState: false,
+    progress: false,
+    seek: false,
+    tempQueueChange: false,
+  }
+
+  // ── Subscribe methods ──
+
+  subscribeTrackChange(cb: (track: TrackItem, reason?: Reason) => void): Unsubscribe {
+    this.trackChange.add(cb)
+    this.ensureRegistered('trackChange')
+    return () => { this.trackChange.delete(cb) }
+  }
+
+  subscribePlaybackState(cb: (state: TrackPlayerState, reason?: Reason) => void): Unsubscribe {
+    this.playbackState.add(cb)
+    this.ensureRegistered('playbackState')
+    return () => { this.playbackState.delete(cb) }
+  }
+
+  subscribeProgress(cb: (pos: number, dur: number, isSeeked?: boolean) => void): Unsubscribe {
+    this.progress.add(cb)
+    this.ensureRegistered('progress')
+    return () => { this.progress.delete(cb) }
+  }
+
+  subscribeSeek(cb: (pos: number, dur: number) => void): Unsubscribe {
+    this.seek.add(cb)
+    this.ensureRegistered('seek')
+    return () => { this.seek.delete(cb) }
+  }
+
+  subscribeTempQueueChange(cb: (playNext: TrackItem[], upNext: TrackItem[]) => void): Unsubscribe {
+    this.tempQueueChange.add(cb)
+    this.ensureRegistered('tempQueueChange')
+    return () => { this.tempQueueChange.delete(cb) }
+  }
+
+  // ── Native registration (once per event type) ──
+
+  private ensureRegistered(type: keyof typeof this.registered) {
+    if (this.registered[type]) return
+    this.registered[type] = true
+
+    switch (type) {
+      case 'trackChange':
+        TrackPlayer.onChangeTrack((track, reason) => {
+          this.trackChange.forEach((cb) => cb(track, reason))
+        })
+        break
+      case 'playbackState':
+        TrackPlayer.onPlaybackStateChange((state, reason) => {
+          this.playbackState.forEach((cb) => cb(state, reason))
+        })
+        break
+      case 'progress':
+        TrackPlayer.onPlaybackProgressChange((pos, dur, isSeeked) => {
+          this.progress.forEach((cb) => cb(pos, dur, isSeeked))
+        })
+        break
+      case 'seek':
+        TrackPlayer.onSeek((pos, dur) => {
+          this.seek.forEach((cb) => cb(pos, dur))
+        })
+        break
+      case 'tempQueueChange':
+        TrackPlayer.onTemporaryQueueChange((playNext, upNext) => {
+          this.tempQueueChange.forEach((cb) => cb(playNext, upNext))
+        })
+        break
+    }
+  }
+}
+
+export const callbackManager = new CallbackManager()
+```
+
+**What changed from v1:**
+- Added `tempQueueChange` subscriber type (new v2 event).
+- All methods return proper `Unsubscribe` function.
+- Consistent naming.
+- The native callback registration happens once per type (same pattern, cleaner implementation).
+
+### B.3 `useActualQueue` — Event-Driven, Zero Polling
+
+**Design:** The queue only changes when:
+1. A track changes (skip, auto-advance, playSong)
+2. The temp queue mutates (playNext, addToUpNext, remove, clear, reorder)
+3. A playlist mutation affects the loaded playlist (add/remove/reorder tracks)
+
+We listen to exactly these events. No `setTimeout`. No state-change listener (play/pause doesn't change queue order).
+
+```typescript
+// useActualQueue.ts
+
+import { useEffect, useReducer, useCallback, useRef } from 'react'
+import { TrackPlayer } from '../index'
+import { callbackManager } from './callbackManager'
+import type { TrackItem } from '../types/PlayerQueue'
+
+export interface UseActualQueueResult {
+  queue: TrackItem[]
+  isLoading: boolean
+}
+
+interface QueueState {
+  queue: TrackItem[]
+  isLoading: boolean
+  version: number     // monotonic counter to discard stale fetches
+}
+
+type QueueAction =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_COMPLETE'; queue: TrackItem[]; version: number }
+  | { type: 'INVALIDATE' }  // bump version, trigger re-fetch
+
+function queueReducer(state: QueueState, action: QueueAction): QueueState {
+  switch (action.type) {
+    case 'FETCH_START':
+      return { ...state, isLoading: true }
+    case 'FETCH_COMPLETE':
+      // Discard if a newer invalidation happened while we were fetching
+      if (action.version < state.version) return state
+      return { queue: action.queue, isLoading: false, version: state.version }
+    case 'INVALIDATE':
+      return { ...state, version: state.version + 1 }
+  }
+}
+
+export function useActualQueue(): UseActualQueueResult {
+  const [state, dispatch] = useReducer(queueReducer, {
+    queue: [],
+    isLoading: true,
+    version: 0,
+  })
+
+  const versionRef = useRef(0)
+
+  // Fetch queue from native. Captures version at call time
+  // to discard results if state was invalidated during the fetch.
+  const fetchQueue = useCallback(async () => {
+    dispatch({ type: 'FETCH_START' })
+    const capturedVersion = versionRef.current
+    try {
+      const queue = await TrackPlayer.getActualQueue()
+      dispatch({ type: 'FETCH_COMPLETE', queue, version: capturedVersion })
+    } catch {
+      dispatch({ type: 'FETCH_COMPLETE', queue: [], version: capturedVersion })
+    }
+  }, [])
+
+  // Invalidate + re-fetch. Called by event handlers.
+  const invalidateAndFetch = useCallback(() => {
+    versionRef.current += 1
+    dispatch({ type: 'INVALIDATE' })
+    fetchQueue()
+  }, [fetchQueue])
+
+  // Initial fetch
+  useEffect(() => {
+    fetchQueue()
+  }, [fetchQueue])
+
+  // Queue changes when a track transition happens
+  useEffect(() => {
+    return callbackManager.subscribeTrackChange(() => {
+      invalidateAndFetch()
+    })
+  }, [invalidateAndFetch])
+
+  // Queue changes when temp queue mutates (playNext, addToUpNext, remove, clear)
+  useEffect(() => {
+    return callbackManager.subscribeTempQueueChange(() => {
+      invalidateAndFetch()
+    })
+  }, [invalidateAndFetch])
+
+  return { queue: state.queue, isLoading: state.isLoading }
+}
+```
+
+**Why this is robust:**
+
+1. **No `setTimeout`.** The `onTemporaryQueueChange` event fires AFTER the native player queue is rebuilt. By the time JS receives it, `getActualQueue()` is guaranteed to return the new state.
+
+2. **No `refreshQueue()` needed.** The old API required callers to manually call `refreshQueue()` after `playNext()`. In v2, the native `playNext()` implementation calls `notifyTemporaryQueueChange()` which triggers `onTemporaryQueueChange` which triggers `invalidateAndFetch()`. Fully automatic.
+
+3. **Version counter prevents stale data.** If two events fire in rapid succession:
+   - Event 1 fires → `versionRef = 1`, starts `getActualQueue()` (fetch A)
+   - Event 2 fires → `versionRef = 2`, starts `getActualQueue()` (fetch B)
+   - Fetch A resolves with `version=1` but state.version is now `2` → discarded
+   - Fetch B resolves with `version=2` → accepted
+
+4. **Single re-render per fetch.** `useReducer` with object state means one dispatch = one render.
+
+5. **Correct event triggers.** Only `trackChange` and `tempQueueChange` refresh the queue. `playbackStateChange` (play/pause) does NOT — because play/pause doesn't change queue order. This avoids unnecessary work.
+
+### B.4 `useNowPlaying` — Incremental State, No Double Fetch
+
+**Design:** Instead of re-fetching the entire `PlayerState` on every event, we:
+1. Fetch full state ONCE on mount.
+2. Apply incremental updates from specific events.
+3. Only use `getState()` for the initial load — never again.
+
+The native events carry ALL the data needed to update the JS state:
+- `onChangeTrack(track, reason)` → update `currentTrack`, `currentPlayingType`, `currentIndex`
+- `onPlaybackStateChange(state, reason)` → update `currentState`
+- `onPlaybackProgressChange(pos, dur)` → update `currentPosition`, `totalDuration`
+- `onSeek(pos, dur)` → update `currentPosition`, `totalDuration`
+- `onTemporaryQueueChange(...)` → update `currentPlayingType` (if needed)
+
+But there's a subtlety: `onChangeTrack` only gives us the `TrackItem`, not the `currentIndex` or `currentPlayingType`. We need these from `getState()`.
+
+**Revised design:** Use a hybrid approach:
+- Progress/seek updates: apply incrementally (high frequency, no fetch).
+- Track change / state change: fetch full state (low frequency, <1ms with v2 architecture, guaranteed consistent snapshot).
+
+```typescript
+// useNowPlaying.ts
+
+import { useEffect, useReducer, useCallback, useRef } from 'react'
+import { TrackPlayer } from '../index'
+import { callbackManager } from './callbackManager'
+import type { PlayerState } from '../types/PlayerQueue'
+
+const DEFAULT_STATE: PlayerState = {
+  currentTrack: null,
+  currentPosition: 0,
+  totalDuration: 0,
+  currentState: 'stopped',
+  currentPlaylistId: null,
+  currentIndex: -1,
+  currentPlayingType: 'not-playing',
+}
+
+interface NowPlayingState {
+  playerState: PlayerState
+  isReady: boolean
+  version: number
+}
+
+type NowPlayingAction =
+  | { type: 'FULL_STATE'; state: PlayerState; version: number }
+  | { type: 'PROGRESS'; position: number; duration: number }
+  | { type: 'SEEK'; position: number; duration: number }
+  | { type: 'INVALIDATE' }
+
+function nowPlayingReducer(state: NowPlayingState, action: NowPlayingAction): NowPlayingState {
+  switch (action.type) {
+    case 'FULL_STATE':
+      if (action.version < state.version) return state
+      return {
+        playerState: action.state,
+        isReady: true,
+        version: state.version,
+      }
+    case 'PROGRESS':
+      return {
+        ...state,
+        playerState: {
+          ...state.playerState,
+          currentPosition: action.position,
+          totalDuration: action.duration,
+        },
+      }
+    case 'SEEK':
+      return {
+        ...state,
+        playerState: {
+          ...state.playerState,
+          currentPosition: action.position,
+          totalDuration: action.duration,
+        },
+      }
+    case 'INVALIDATE':
+      return { ...state, version: state.version + 1 }
+  }
+}
+
+export function useNowPlaying(): PlayerState & { isReady: boolean } {
+  const [state, dispatch] = useReducer(nowPlayingReducer, {
+    playerState: DEFAULT_STATE,
+    isReady: false,
+    version: 0,
+  })
+
+  const versionRef = useRef(0)
+
+  const fetchFullState = useCallback(async () => {
+    versionRef.current += 1
+    dispatch({ type: 'INVALIDATE' })
+    const capturedVersion = versionRef.current
+    try {
+      const newState = await TrackPlayer.getState()
+      dispatch({ type: 'FULL_STATE', state: newState, version: capturedVersion })
+    } catch {
+      // Keep existing state on error
+    }
+  }, [])
+
+  // 1. Initial state fetch (once)
+  useEffect(() => {
+    fetchFullState()
+  }, [fetchFullState])
+
+  // 2. Track change → full state refresh (low frequency: on skip/auto-advance)
+  //    This gives us correct currentTrack, currentIndex, currentPlayingType,
+  //    currentPlaylistId — all in one consistent snapshot from native.
+  useEffect(() => {
+    return callbackManager.subscribeTrackChange(() => {
+      fetchFullState()
+    })
+  }, [fetchFullState])
+
+  // 3. Playback state change → full state refresh (low frequency: play/pause/stop)
+  //    This gives us correct currentState.
+  useEffect(() => {
+    return callbackManager.subscribePlaybackState(() => {
+      fetchFullState()
+    })
+  }, [fetchFullState])
+
+  // 4. Progress update → incremental (HIGH frequency: every 250ms)
+  //    Only updates position and duration. No async fetch.
+  //    This is the hot path — must be zero-allocation, zero-async.
+  useEffect(() => {
+    return callbackManager.subscribeProgress((position, duration) => {
+      dispatch({ type: 'PROGRESS', position, duration })
+    })
+  }, [])
+
+  // 5. Seek → incremental (low frequency: user seeks)
+  useEffect(() => {
+    return callbackManager.subscribeSeek((position, duration) => {
+      dispatch({ type: 'SEEK', position, duration })
+    })
+  }, [])
+
+  return { ...state.playerState, isReady: state.isReady }
+}
+```
+
+**Why this is robust:**
+
+1. **No stale data.** The version counter ensures that if a track change fires while a previous `getState()` is in flight, the stale result is discarded.
+
+2. **No double-fetch.** Track change and state change each trigger ONE `getState()` call. In v2, `getState()` is <1ms (no latch, no thread blocking), so this is fast.
+
+3. **Progress never triggers a fetch.** At 4 ticks/sec, we absolutely cannot call `getState()` each time. Instead, we apply the position/duration incrementally via a reducer dispatch. This is a single object spread — zero async, zero bridge calls.
+
+4. **Single re-render per event.** `useReducer` batches the state update into one render.
+
+5. **Correct initial state.** On mount, `fetchFullState()` gets the complete snapshot. Between mount and the first event, the hook shows real data (not DEFAULT_STATE forever).
+
+6. **Why `getState()` on track change instead of incremental?** Because `onChangeTrack` only gives `(track, reason)`. We also need `currentIndex`, `currentPlayingType`, `currentPlaylistId`, and accurate `currentPosition` (which resets to 0 on track change). Fetching the full state from native guarantees a consistent snapshot of all fields. Since track changes happen maybe once per 3-4 minutes (song length), this is perfectly acceptable.
+
+### B.5 `useOnPlaybackProgressChange` — Single State Object, Zero Allocation
+
+**Design:** One `useState` with an object. One `dispatch` per tick. One re-render per tick.
+
+```typescript
+// useOnPlaybackProgressChange.ts
+
+import { useEffect, useState } from 'react'
+import { callbackManager } from './callbackManager'
+
+export interface PlaybackProgress {
+  position: number
+  totalDuration: number
+  isManuallySeeked: boolean | undefined
+}
+
+const DEFAULT_PROGRESS: PlaybackProgress = {
+  position: 0,
+  totalDuration: 0,
+  isManuallySeeked: undefined,
+}
+
+export function useOnPlaybackProgressChange(): PlaybackProgress {
+  const [progress, setProgress] = useState<PlaybackProgress>(DEFAULT_PROGRESS)
+
+  useEffect(() => {
+    return callbackManager.subscribeProgress(
+      (position, totalDuration, isManuallySeeked) => {
+        setProgress({ position, totalDuration, isManuallySeeked })
+      }
+    )
+  }, [])
+
+  return progress
+}
+```
+
+**Why this is robust:**
+
+1. **Single `useState`.** v1 used 3 separate `useState` hooks → 3 `setState` calls per tick → potentially 3 re-renders per tick (React batches in event handlers but not always in async callbacks). v2 uses one object → one `setState` → one re-render.
+
+2. **No `setTimeout` or interval.** The native side fires `onPlaybackProgressChange` every 250ms from the player thread. The JS side passively receives it. If playback stops, the native side stops firing → the hook naturally stops updating.
+
+3. **No `isMounted` ref.** React 18+ batches state updates and the cleanup function from `useEffect` removes the subscriber. No need for manual mount tracking.
+
+4. **Object identity for memoization.** Downstream components can use `useMemo` / `React.memo` with the progress object. Since we create a new object each tick, `React.memo` with shallow compare will correctly detect changes.
+
+### B.6 Data Flow Diagram — Single Source of Truth
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                NATIVE (Player Thread)                     │
+│                                                           │
+│  ExoPlayer / AVQueuePlayer                                │
+│  ├── onMediaItemTransition / currentItemDidChange         │
+│  │   └── notifyTrackChange(track, reason)                 │
+│  │   └── notifyTemporaryQueueChange(playNext, upNext)     │
+│  ├── onPlaybackStateChanged                               │
+│  │   └── notifyPlaybackStateChange(state, reason)         │
+│  ├── progressUpdateRunnable (250ms)                       │
+│  │   └── notifyPlaybackProgress(pos, dur, isSeeked)       │
+│  └── onPositionDiscontinuity / timeJumped                 │
+│      └── notifySeek(pos, dur)                             │
+│                                                           │
+│  getActualQueue() → snapshot of player thread state       │
+│  getState()       → snapshot of player thread state       │
+│                                                           │
+│  Both return data from the SAME thread that fires events. │
+│  No race. No stale data. No cross-thread read.            │
+└─────────────────┬───────────────────────────────────────┘
+                  │ Nitro bridge (auto thread hop)
+                  ▼
+┌─────────────────────────────────────────────────────────┐
+│                JS (Hermes, single thread)                  │
+│                                                           │
+│  callbackManager (singleton)                              │
+│  ├── Native event → fan out to all subscribers            │
+│  └── One native registration per event type               │
+│                                                           │
+│  ┌─────────────────────────────────────────────┐          │
+│  │  useActualQueue                              │          │
+│  │                                              │          │
+│  │  Listens to:                                 │          │
+│  │  ├── onChangeTrack → invalidate + fetch      │          │
+│  │  └── onTemporaryQueueChange → invalidate     │          │
+│  │      + fetch                                 │          │
+│  │                                              │          │
+│  │  Does NOT listen to:                         │          │
+│  │  ├── onPlaybackStateChange (no queue change) │          │
+│  │  └── onProgress (no queue change)            │          │
+│  │                                              │          │
+│  │  getActualQueue() fetches from native.       │          │
+│  │  Native returns queue from player thread.    │          │
+│  │  The event that triggered the fetch was      │          │
+│  │  emitted AFTER the queue was rebuilt.         │          │
+│  │  Therefore: fetch always returns new state.   │          │
+│  │  No setTimeout needed.                        │          │
+│  └─────────────────────────────────────────────┘          │
+│                                                           │
+│  ┌─────────────────────────────────────────────┐          │
+│  │  useNowPlaying                               │          │
+│  │                                              │          │
+│  │  Listens to:                                 │          │
+│  │  ├── onChangeTrack → full getState() fetch   │          │
+│  │  ├── onPlaybackStateChange → full fetch      │          │
+│  │  ├── onProgress → incremental pos/dur only   │          │
+│  │  └── onSeek → incremental pos/dur only       │          │
+│  │                                              │          │
+│  │  Full fetch: ~once per track change          │          │
+│  │  Incremental: ~4x/sec (just 2 numbers)      │          │
+│  │                                              │          │
+│  │  Version counter discards stale fetches.     │          │
+│  └─────────────────────────────────────────────┘          │
+│                                                           │
+│  ┌─────────────────────────────────────────────┐          │
+│  │  useOnPlaybackProgressChange                 │          │
+│  │                                              │          │
+│  │  Listens to:                                 │          │
+│  │  └── onProgress → single setState({...})     │          │
+│  │                                              │          │
+│  │  Pure event consumer. No fetch. No async.    │          │
+│  │  One re-render per tick (250ms).             │          │
+│  └─────────────────────────────────────────────┘          │
+└─────────────────────────────────────────────────────────┘
+```
+
+### B.7 Why There Are Zero Data Discrepancies
+
+The guarantee chain:
+
+```
+1. Native player thread is the SINGLE OWNER of all state.
+2. Events are emitted ON the player thread AFTER state mutation.
+3. getActualQueue() / getState() run ON the player thread.
+4. Therefore: when JS receives an event and calls getActualQueue(),
+   the native function runs AFTER the mutation that triggered the event.
+   The returned data always reflects the new state.
+
+Example flow:
+  a. User calls playNext("track-A")
+  b. Native player thread: insert track-A into playNextStack
+  c. Native player thread: rebuildQueueFromCurrentPosition()
+  d. Native player thread: notifyTemporaryQueueChange()  ← emitted AFTER rebuild
+  e. Nitro bridge delivers event to JS
+  f. JS useActualQueue: calls getActualQueue()
+  g. Native player thread: getActualQueueInternal()  ← runs AFTER step c
+  h. Returns queue WITH track-A included
+  i. JS updates state. UI shows track-A in queue.
+
+There is no window where the event arrives but the state hasn't been updated.
+The serial player thread guarantees causal ordering.
+```
+
+### B.8 Performance Characteristics
+
+| Hook | Events/sec | Async calls/sec | Re-renders/sec | Bridge calls/sec |
+|------|-----------|-----------------|-----------------|------------------|
+| `useActualQueue` | ~0.01 (track changes) | ~0.01 (`getActualQueue`) | ~0.01 | ~0.01 |
+| `useNowPlaying` | 4 (progress) + ~0.02 (track/state) | ~0.02 (`getState`) | 4 (progress ticks) | ~0.02 |
+| `useOnPlaybackProgressChange` | 4 | 0 | 4 | 0 |
+
+Notes:
+- `useActualQueue` is essentially idle during normal playback. It only works when the queue actually changes.
+- `useNowPlaying` does 4 re-renders/sec from progress, but each is a single object spread (zero async, zero bridge). The full `getState()` fetch happens only ~once per 3-4 minutes (song length).
+- `useOnPlaybackProgressChange` does zero bridge calls. It's a pure event consumer. 4 re-renders/sec is well within React's capability.
+
+### B.9 Edge Cases
+
+| Scenario | Behavior |
+|----------|----------|
+| Mount during playback | `useNowPlaying` fetches full state → shows current track immediately. Progress events start flowing → position updates live. |
+| Mount before any playback | All hooks show default state. When first track plays, events trigger updates. |
+| Rapid skip (spam skipToNext) | Each skip fires `onChangeTrack`. Each triggers `fetchFullState()`. Version counter ensures only the last one's result is kept. `useActualQueue` fetches queue for each, version counter keeps last. |
+| `playNext()` then immediately `getActualQueue()` from another component | The `playNext()` Promise resolves AFTER native has rebuilt the queue and emitted `onTemporaryQueueChange`. Any subsequent `getActualQueue()` call returns the new queue. |
+| Component unmounts during pending `getState()` fetch | The `useEffect` cleanup removes the subscriber. The `dispatch` call after the fetch resolves is a no-op on an unmounted component (React ignores it). No memory leak. |
+| Two `useNowPlaying` hooks in different components | Both subscribe via `callbackManager`. Both receive the same events. Both call `getState()` independently. This is fine — `getState()` is <1ms and they may mount at different times. |
+| Seek while track is changing | `onSeek` fires → incremental position update. `onChangeTrack` fires → full state fetch overwrites position with new track's position. Correct. |
+| Progress event arrives before initial `getState()` resolves | The progress `dispatch` updates position/duration on `DEFAULT_STATE`. When `getState()` resolves, `FULL_STATE` dispatch overwrites everything including the correct position. No stale data persists. |
+
+### B.10 Native Callback Implementation — Correctness Audit and v2 Spec
+
+The hooks above are only as correct as the native callbacks that feed them. This section specifies exactly how each callback must be implemented on both platforms to guarantee the zero-discrepancy contract.
+
+#### B.10.1 Current Problems in Native Callbacks
+
+| Problem | Platform | Detail |
+|---------|----------|--------|
+| Callbacks dispatched to **main thread** | Both | Android: `handler.post { callback() }` dispatches to main looper. iOS: `DispatchQueue.main.async { callback() }`. This means callbacks arrive on a DIFFERENT thread than the one that mutated state. A `getState()` call from within a callback could race with the next mutation on the player thread. |
+| `synchronized` lock during snapshot | Android | `notifyTrackChange` takes `synchronized(onChangeTrackListeners)` to snapshot, then `handler.post` to invoke. Under rapid track changes, the lock contends with `addOnChangeTrackListener`. |
+| `listenersQueue` barrier writes for EVERY notify | iOS | `notifyTrackChange` uses `listenersQueue.async(flags: .barrier)` — this is a WRITE lock just to read the list and snapshot it. Should be a non-barrier read. |
+| Progress fires only when `player.rate > 0` (iOS) | iOS | When paused, no progress events fire. The hook has no way to know the current position after a pause unless it fetches state separately. |
+| Progress stops when `STATE_IDLE` (Android) | Android | `progressUpdateRunnable` checks `player.playbackState != Player.STATE_IDLE`. After stop, no more progress events. Same issue. |
+| `notifyPlaybackProgress` cleanup every 10th call | Android | `progressNotifyCounter % 10` — arbitrary cleanup interval. Dead callbacks accumulate in between. |
+| Progress uses a mutable scratch list | Android | `progressCallbackScratch` is an `ArrayList` reused across calls. Not thread-safe if `notifyPlaybackProgress` is re-entered. |
+| `WeakCallbackBox` owner is always the singleton | Both | See Section 5.1. The `isAlive` check never triggers. |
+| No `onTemporaryQueueChange` callback exists | Both | This is a new v2 event that needs to be implemented. |
+| iOS periodic time observer fires on `.main` queue | iOS | `player.addPeriodicTimeObserver(queue: .main)` — forces progress callbacks onto the main thread. Should be the player queue. |
+
+#### B.10.2 v2 Native Callback Spec
+
+Every callback must satisfy these rules:
+
+```
+RULE 1: Callbacks are invoked on the player thread/queue.
+        Never on main. Nitro bridge handles the JS thread hop.
+
+RULE 2: Callbacks are invoked AFTER the state mutation is complete.
+        If a callback fires, any getState()/getActualQueue() call
+        from within that callback (or triggered by it) returns the
+        new state.
+
+RULE 3: No locks during callback invocation.
+        Use CopyOnWriteArrayList (Android) or snapshot from
+        ListenerRegistry (iOS).
+
+RULE 4: Progress callbacks fire during playback AND emit one
+        final position update on pause/stop so the hook has
+        the exact position where playback stopped.
+
+RULE 5: Every state mutation that changes the temp queue calls
+        notifyTemporaryQueueChange() before returning.
+```
+
+#### B.10.3 `onChangeTrack` — Native Implementation
+
+**Fires when:** A new track starts playing (any source: auto-advance, skip, playSong, temp track transition).
+
+**Data:** `(track: TrackItem, reason: Reason?)`
+
+**Android v2:**
+
+```kotlin
+// Called on player thread (inside ExoPlayer listener, which runs on playerThread.looper)
+private fun notifyTrackChange(track: TrackItem, reason: Reason?) {
+    // Already on player thread — no lock, no post, direct invocation
+    onChangeTrackListeners.forEach { it(track, reason) }
+}
+
+// Where it's called (all already on player thread):
+// 1. onMediaItemTransition → after currentTemporaryType and currentTrackIndex are updated
+// 2. rebuildQueueAndPlayFromIndex → after queue is rebuilt and playing
+// 3. Playlist repeat → after queue is rebuilt from index 0
+```
+
+**iOS v2:**
+
+```swift
+// Called on playerQueue
+private func notifyTrackChange(_ track: TrackItem, _ reason: Reason?) {
+    // Already on playerQueue — direct invocation on snapshot
+    onChangeTrackListeners.forEach { $0(track, reason) }
+}
+
+// Where it's called (all on playerQueue):
+// 1. currentItemDidChange → after currentTemporaryType and currentTrackIndex updated
+// 2. rebuildQueueFromPlaylistIndex → after queue rebuilt
+// 3. Playlist repeat → after queue rebuilt from index 0
+```
+
+**Ordering guarantee:** The track change callback fires AFTER:
+- `currentTemporaryType` is updated
+- `currentTrackIndex` is updated (if returning to original playlist)
+- The temp track is removed from its list (if it just finished)
+- The native player queue is rebuilt
+
+Therefore: `getState()` and `getActualQueue()` called from the JS callback handler will return data consistent with the new track.
+
+#### B.10.4 `onPlaybackStateChange` — Native Implementation
+
+**Fires when:** Playing/paused/stopped state changes.
+
+**Data:** `(state: TrackPlayerState, reason: Reason?)`
+
+**Android v2:**
+
+```kotlin
+private fun emitStateChange(reason: Reason? = null) {
+    // Already on player thread (ExoPlayer callbacks run on playerThread.looper)
+    val state = when (player.playbackState) {
+        Player.STATE_IDLE -> TrackPlayerState.STOPPED
+        Player.STATE_BUFFERING ->
+            if (player.playWhenReady) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
+        Player.STATE_READY ->
+            if (player.isPlaying) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
+        Player.STATE_ENDED -> TrackPlayerState.STOPPED
+        else -> TrackPlayerState.STOPPED
+    }
+    val actualReason = reason ?: if (player.playbackState == Player.STATE_ENDED) Reason.END else null
+
+    onPlaybackStateChangeListeners.forEach { it(state, actualReason) }
+    mediaSessionManager?.onPlaybackStateChanged()
+}
+
+// Called from:
+// 1. ExoPlayer.Listener.onPlayWhenReadyChanged
+// 2. ExoPlayer.Listener.onPlaybackStateChanged
+// 3. ExoPlayer.Listener.onIsPlayingChanged
+// 4. After play()/pause() commands complete
+```
+
+**iOS v2:**
+
+```swift
+private func emitStateChange(reason: Reason? = nil) {
+    guard let player = player else { return }
+
+    let state: TrackPlayerState
+    if player.rate == 0 {
+        state = .paused
+    } else if player.timeControlStatus == .playing {
+        state = .playing
+    } else {
+        state = .stopped
+    }
+
+    onPlaybackStateChangeListeners.forEach { $0(state, reason) }
+    mediaSessionManager?.onPlaybackStateChanged()
+}
+
+// Called from:
+// 1. KVO on "rate" change
+// 2. KVO on "timeControlStatus" change
+// 3. KVO on "status" (readyToPlay / failed)
+// 4. After play()/pause() commands complete
+```
+
+#### B.10.5 `onPlaybackProgressChange` — Native Implementation (CRITICAL for hooks)
+
+**Fires when:** Every ~250ms during playback. Also fires once on pause/stop with the final position.
+
+**Data:** `(position: Double, totalDuration: Double, isManuallySeeked: Boolean?)`
+
+**Android v2:**
+
+```kotlin
+private val progressUpdateRunnable = object : Runnable {
+    override fun run() {
+        if (!::player.isInitialized) return
+
+        val isPlaying = player.isPlaying
+        val state = player.playbackState
+
+        if (state != Player.STATE_IDLE) {
+            val position = player.currentPosition / 1000.0
+            val duration = if (player.duration > 0) player.duration / 1000.0 else 0.0
+            val seekFlag = if (isManuallySeeked) true else null
+            isManuallySeeked = false
+
+            onProgressListeners.forEach { it(position, duration, seekFlag) }
+        }
+
+        // Continue posting while playing; post one final update when pausing/stopping
+        if (isPlaying) {
+            playerHandler.postDelayed(this, 250)
+        }
+        // When not playing, this runnable stops naturally.
+        // It will be re-posted when play() is called.
+    }
+}
+
+// Start progress updates (called from play())
+private fun startProgressUpdates() {
+    playerHandler.removeCallbacks(progressUpdateRunnable)
+    playerHandler.post(progressUpdateRunnable)
+}
+
+// Emit final position on pause/stop
+suspend fun pause() = withPlayerContext {
+    if (!::player.isInitialized) throw IllegalStateException("Player not initialized")
+    player.pause()
+
+    // Emit final position so hooks know exactly where we paused
+    val position = player.currentPosition / 1000.0
+    val duration = if (player.duration > 0) player.duration / 1000.0 else 0.0
+    onProgressListeners.forEach { it(position, duration, null) }
+
+    emitStateChange(Reason.USER_ACTION)
+}
+
+suspend fun play() = withPlayerContext {
+    if (!::player.isInitialized) throw IllegalStateException("Player not initialized")
+    player.play()
+    startProgressUpdates()
+    emitStateChange(Reason.USER_ACTION)
+}
+```
+
+**iOS v2:**
+
+```swift
+private func setupPeriodicTimeObserver() {
+    if let existing = boundaryTimeObserver, let p = player {
+        p.removeTimeObserver(existing)
+        boundaryTimeObserver = nil
+    }
+
+    guard let player = player else { return }
+
+    let interval = CMTime(seconds: 0.25, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+
+    // CRITICAL: queue: playerQueue, NOT .main
+    boundaryTimeObserver = player.addPeriodicTimeObserver(
+        forInterval: interval,
+        queue: playerQueue
+    ) { [weak self] _ in
+        self?.handleProgressTick()
+    }
+}
+
+private func handleProgressTick() {
+    guard let player = player, let item = player.currentItem else { return }
+    guard player.rate > 0 else { return }
+
+    let position = item.currentTime().seconds
+    let duration = item.duration.seconds
+    guard duration > 0 && !duration.isNaN && !duration.isInfinite else { return }
+
+    let seekFlag = isManuallySeeked ? true : nil
+    isManuallySeeked = false
+
+    onProgressListeners.forEach { $0(position, duration, seekFlag) }
+}
+
+// Emit final position on pause
+func pause() async throws {
+    try await withPlayerQueue {
+        guard let player = self.player else {
+            throw NitroPlayerError.playerNotInitialized
+        }
+        player.pause()
+
+        // Final position update
+        if let item = player.currentItem {
+            let position = item.currentTime().seconds
+            let duration = item.duration.seconds
+            if duration > 0 && !duration.isNaN {
+                self.onProgressListeners.forEach { $0(position, duration, nil) }
+            }
+        }
+
+        self.emitStateChange(reason: .userAction)
+    }
+}
+```
+
+**Why the final position on pause matters:**
+
+Without it, `useNowPlaying` would show the last progress tick's position (up to 250ms ago), not the actual pause position. For seek bars that snap to the pause point, this causes a visible jump.
+
+```
+Without final update:
+  Progress tick: position = 42.0s
+  User pauses at 42.15s
+  Hook shows 42.0s → then getState() returns 42.15s → visible jump
+
+With final update:
+  Progress tick: position = 42.0s
+  User pauses at 42.15s
+  Final update: position = 42.15s → hook shows 42.15s → no jump
+```
+
+#### B.10.6 `onSeek` — Native Implementation
+
+**Fires when:** User or programmatic seek completes.
+
+**Data:** `(position: Double, totalDuration: Double)`
+
+**Android v2:**
+
+```kotlin
+// Called from ExoPlayer.Listener.onPositionDiscontinuity (already on player thread)
+override fun onPositionDiscontinuity(
+    oldPosition: Player.PositionInfo,
+    newPosition: Player.PositionInfo,
+    reason: Int,
+) {
+    if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+        isManuallySeeked = true
+        val pos = newPosition.positionMs / 1000.0
+        val dur = if (player.duration > 0) player.duration / 1000.0 else 0.0
+        onSeekListeners.forEach { it(pos, dur) }
+    }
+}
+```
+
+**iOS v2:**
+
+```swift
+// Called from playerItemTimeJumped notification (must dispatch to playerQueue)
+@objc private func playerItemTimeJumped(notification: Notification) {
+    playerQueue.async { [weak self] in
+        guard let self = self, let player = self.player, let item = player.currentItem else { return }
+
+        let position = item.currentTime().seconds
+        let duration = item.duration.seconds
+
+        self.isManuallySeeked = true
+        self.onSeekListeners.forEach { $0(position, duration) }
+
+        // Trigger immediate progress update
+        self.handleProgressTick()
+    }
+}
+```
+
+#### B.10.7 `onTemporaryQueueChange` — Native Implementation (NEW)
+
+**Fires when:** Any mutation to `playNextStack` or `upNextQueue`.
+
+**Data:** `(playNextQueue: [TrackItem], upNextQueue: [TrackItem])`
+
+**Call sites (both platforms):**
+
+```
+1. playNext(trackId)       → after insert at playNextStack[0]
+2. addToUpNext(trackId)    → after append to upNextQueue
+3. removeFromPlayNext()    → after remove from playNextStack
+4. removeFromUpNext()      → after remove from upNextQueue
+5. clearPlayNext()         → after playNextStack.clear()
+6. clearUpNext()           → after upNextQueue.clear()
+7. reorderTemporaryTrack() → after reorder
+8. onMediaItemTransition   → after temp track is auto-removed (played and deleted)
+9. skipToNext (temp)       → after temp track is removed on skip
+10. skipToPrevious (temp)  → after temp track is removed on back
+11. skipToIndex (cross-section) → after temp lists modified
+12. playSong()             → after all temps cleared
+13. loadPlaylist()         → after all temps cleared
+14. Playlist repeat        → after all temps cleared
+```
+
+**Android v2:**
+
+```kotlin
+private fun notifyTemporaryQueueChange() {
+    // Already on player thread — snapshot and invoke directly
+    val pn = playNextStack.toList()
+    val un = upNextQueue.toList()
+    onTemporaryQueueChangeListeners.forEach { it(pn, un) }
+}
+```
+
+**iOS v2:**
+
+```swift
+private func notifyTemporaryQueueChange() {
+    // Already on playerQueue — snapshot and invoke directly
+    let pn = playNextStack
+    let un = upNextQueue
+    onTemporaryQueueChangeListeners.forEach { $0(pn, un) }
+}
+```
+
+**Ordering guarantee:** This callback fires AFTER:
+- The temp list mutation is complete
+- `rebuildQueueFromCurrentPosition()` has been called (native player queue updated)
+- `currentTemporaryType` is updated (if a temp track was removed)
+
+Therefore: `getActualQueue()` called from the JS callback will return the new queue. `useActualQueue` never sees stale data.
+
+#### B.10.8 v2 Bridge Layer (connects native ListenerRegistry to Nitro)
+
+**Android v2 HybridTrackPlayer.kt:**
+
+```kotlin
+class HybridTrackPlayer : HybridTrackPlayerSpec() {
+    private val core: TrackPlayerCore
+    private val listenerIds = mutableListOf<Pair<String, Long>>()
+
+    init {
+        val context = NitroModules.applicationContext
+            ?: throw IllegalStateException("React Context is not initialized")
+        core = TrackPlayerCore.getInstance(context)
+    }
+
+    // Commands — all suspend (maps to Promise<void>)
+    override fun play(): Promise<Unit> = Promise.async { core.play() }
+    override fun pause(): Promise<Unit> = Promise.async { core.pause() }
+    override fun seek(position: Double): Promise<Unit> = Promise.async { core.seek(position) }
+    // ... etc
+
+    // Callbacks — register with core, track IDs for cleanup
+    override fun onChangeTrack(callback: (TrackItem, Reason?) -> Unit) {
+        val id = core.onChangeTrackListeners.add(callback)
+        listenerIds.add("onChangeTrack" to id)
+    }
+
+    override fun onPlaybackStateChange(callback: (TrackPlayerState, Reason?) -> Unit) {
+        val id = core.onPlaybackStateChangeListeners.add(callback)
+        listenerIds.add("onPlaybackStateChange" to id)
+    }
+
+    override fun onPlaybackProgressChange(callback: (Double, Double, Boolean?) -> Unit) {
+        val id = core.onProgressListeners.add(callback)
+        listenerIds.add("onProgress" to id)
+    }
+
+    override fun onSeek(callback: (Double, Double) -> Unit) {
+        val id = core.onSeekListeners.add(callback)
+        listenerIds.add("onSeek" to id)
+    }
+
+    override fun onTemporaryQueueChange(callback: (Array<TrackItem>, Array<TrackItem>) -> Unit) {
+        val wrappedCallback = { pn: List<TrackItem>, un: List<TrackItem> ->
+            callback(pn.toTypedArray(), un.toTypedArray())
+        }
+        val id = core.onTemporaryQueueChangeListeners.add(wrappedCallback)
+        listenerIds.add("onTempQueue" to id)
+    }
+
+    override fun onTracksNeedUpdate(callback: (Array<TrackItem>, Double) -> Unit) {
+        val wrappedCallback = { tracks: List<TrackItem>, lookahead: Int ->
+            callback(tracks.toTypedArray(), lookahead.toDouble())
+        }
+        val id = core.onTracksNeedUpdateListeners.add(wrappedCallback)
+        listenerIds.add("onTracksNeedUpdate" to id)
+    }
+
+    override fun onAndroidAutoConnectionChange(callback: (Boolean) -> Unit) {
+        val id = core.onAndroidAutoConnectionListeners.add(callback)
+        listenerIds.add("onAAConnection" to id)
+    }
+
+    // Cleanup: remove all listeners when HybridObject is GC'd
+    protected fun finalize() {
+        for ((type, id) in listenerIds) {
+            when (type) {
+                "onChangeTrack" -> core.onChangeTrackListeners.remove(id)
+                "onPlaybackStateChange" -> core.onPlaybackStateChangeListeners.remove(id)
+                "onProgress" -> core.onProgressListeners.remove(id)
+                "onSeek" -> core.onSeekListeners.remove(id)
+                "onTempQueue" -> core.onTemporaryQueueChangeListeners.remove(id)
+                "onTracksNeedUpdate" -> core.onTracksNeedUpdateListeners.remove(id)
+                "onAAConnection" -> core.onAndroidAutoConnectionListeners.remove(id)
+            }
+        }
+        listenerIds.clear()
+    }
+}
+```
+
+**iOS v2 HybridTrackPlayer.swift:**
+
+```swift
+final class HybridTrackPlayer: HybridTrackPlayerSpec {
+    private let core = TrackPlayerCore.shared
+    private var listenerIds: [(String, Int64)] = []
+
+    // Commands — all async throws (maps to Promise<void>)
+    func play() async throws { try await core.play() }
+    func pause() async throws { try await core.pause() }
+    func seek(position: Double) async throws { try await core.seek(position: position) }
+    // ... etc
+
+    // Callbacks — register with core, track IDs for cleanup
+    func onChangeTrack(callback: @escaping (TrackItem, Reason?) -> Void) throws {
+        let id = core.onChangeTrackListeners.add(callback)
+        listenerIds.append(("onChangeTrack", id))
+    }
+
+    func onPlaybackStateChange(callback: @escaping (TrackPlayerState, Reason?) -> Void) throws {
+        let id = core.onPlaybackStateChangeListeners.add(callback)
+        listenerIds.append(("onPlaybackStateChange", id))
+    }
+
+    func onPlaybackProgressChange(callback: @escaping (Double, Double, Bool?) -> Void) throws {
+        let id = core.onProgressListeners.add(callback)
+        listenerIds.append(("onProgress", id))
+    }
+
+    func onSeek(callback: @escaping (Double, Double) -> Void) throws {
+        let id = core.onSeekListeners.add(callback)
+        listenerIds.append(("onSeek", id))
+    }
+
+    func onTemporaryQueueChange(callback: @escaping ([TrackItem], [TrackItem]) -> Void) throws {
+        let id = core.onTemporaryQueueChangeListeners.add(callback)
+        listenerIds.append(("onTempQueue", id))
+    }
+
+    func onTracksNeedUpdate(callback: @escaping ([TrackItem], Double) -> Void) throws {
+        let wrappedCallback: ([TrackItem], Int) -> Void = { tracks, lookahead in
+            callback(tracks, Double(lookahead))
+        }
+        let id = core.onTracksNeedUpdateListeners.add(wrappedCallback)
+        listenerIds.append(("onTracksNeedUpdate", id))
+    }
+
+    func onAndroidAutoConnectionChange(callback: @escaping (Bool) -> Void) throws {
+        // iOS no-op
+    }
+
+    func isAndroidAutoConnected() throws -> Bool { false }
+
+    // Cleanup
+    deinit {
+        for (type, id) in listenerIds {
+            switch type {
+            case "onChangeTrack": _ = core.onChangeTrackListeners.remove(id: id)
+            case "onPlaybackStateChange": _ = core.onPlaybackStateChangeListeners.remove(id: id)
+            case "onProgress": _ = core.onProgressListeners.remove(id: id)
+            case "onSeek": _ = core.onSeekListeners.remove(id: id)
+            case "onTempQueue": _ = core.onTemporaryQueueChangeListeners.remove(id: id)
+            case "onTracksNeedUpdate": _ = core.onTracksNeedUpdateListeners.remove(id: id)
+            default: break
+            }
+        }
+    }
+}
+```
+
+#### B.10.9 End-to-End Data Flow Proof
+
+Here is the exact sequence for `playNext("track-A")` → `useActualQueue` updates:
+
+```
+JS Thread                 Nitro Bridge              Player Thread
+─────────                 ────────────              ─────────────
+trackPlayer.playNext("A")
+  │
+  └──── Promise.async ──────►
+                              │
+                              └── withPlayerContext ──────►
+                                                          │
+                                                    1. findTrackById("A")
+                                                    2. playNextStack.add(0, track)
+                                                    3. rebuildQueueFromCurrentPosition()
+                                                       (ExoPlayer queue rebuilt)
+                                                    4. notifyTemporaryQueueChange()
+                                                       │
+                                                       ├── snapshot playNextStack
+                                                       ├── snapshot upNextQueue
+                                                       └── for listener in registry:
+                                                             listener(pn, un)
+                                                             │
+                              ◄────── Nitro delivers ────────┘
+                              │       callback to JS
+  ◄───── callback arrives ────┘
+  │
+  callbackManager.tempQueueChange
+  subscribers.forEach(cb => cb(pn, un))
+  │
+  └── useActualQueue handler fires
+      │
+      dispatch({ type: 'INVALIDATE' })
+      versionRef.current += 1
+      │
+      └── fetchQueue() → TrackPlayer.getActualQueue()
+          │
+          └──── Promise.async ──────►
+                                      │
+                                      └── withPlayerContext ──────►
+                                                                  │
+                                                            getActualQueueInternal()
+                                                            (reads playNextStack which
+                                                             ALREADY contains track-A
+                                                             because step 2 completed
+                                                             before step 4 was called)
+                                                                  │
+                              ◄────── returns queue ──────────────┘
+          ◄───── queue data ────┘
+          │
+          dispatch({ type: 'FETCH_COMPLETE', queue, version })
+          │
+          React re-renders with new queue
+          UI shows track-A in the queue ✓
+```
+
+**The guarantee:** Step 4 (`notifyTemporaryQueueChange`) fires AFTER step 2 (`playNextStack.add`). The `getActualQueue()` call in the JS callback reads from the same player thread that already executed steps 1-3. There is no window where the event arrives but the data isn't ready. The serial player thread is the single source of truth.
+
+## Appendix C: Risk Assessment
 
 | Risk | Mitigation |
 |------|-----------|
@@ -1578,3 +2753,6 @@ iOS:     throw NitroPlayerError.xyz           →  JS Error("msg")
 | `Promise<void>` for play/pause overhead | ~0.1ms. Unnoticeable. |
 | `ListenerRegistry` memory leak | Bridge `finalize`/`deinit` removes all listeners. |
 | Same track in both playNext and upNext | Allowed by design. Each list independent. |
+| `useNowPlaying` progress re-renders at 4/sec | Only updates 2 numbers. React handles this easily. Can add `useDeferredValue` if needed. |
+| `useActualQueue` fetches on every track change | Track changes happen every 3-4 min. `getActualQueue()` is <1ms. Negligible. |
+| Version counter overflow | `Number.MAX_SAFE_INTEGER` = 9 quadrillion. At 1 event/sec = 285 million years. |
