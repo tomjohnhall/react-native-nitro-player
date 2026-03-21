@@ -1423,84 +1423,316 @@ iOS:     throw NitroPlayerError.xyz           →  JS Error("msg")
 
 ---
 
-## 9. Migration Checklist
+## 9. Execution Plan — 20 Steps in Order
 
-### Phase 1 -- Core Infrastructure
+Each step is self-contained and testable before moving to the next. Do not skip ahead. Each step builds on the previous.
 
-- [ ] Add `kotlinx-coroutines-android` dependency
-- [ ] Create `ListenerRegistry<T>` class (Android)
-- [ ] Create `ListenerRegistry<T>` class (iOS)
-- [ ] Create `NitroPlayerError` enum (iOS)
+---
 
-### Phase 2 -- Android: Player Thread + Coroutines
+### Step 1: Update TypeScript Specs (all 6 `.nitro.ts` files)
 
-- [ ] Create `HandlerThread("NitroPlayer")` in `TrackPlayerCore`
-- [ ] Initialize ExoPlayer with `.setLooper(playerThread.looper)`
-- [ ] Create `playerDispatcher`, `scope`, `withPlayerContext`
-- [ ] Migrate all 10 latch methods to `withPlayerContext`
-- [ ] Migrate fire-and-forget commands to `withPlayerContext` with error reporting
-- [ ] Replace `handler` (main looper) with `playerHandler` throughout
-- [ ] Replace listener arrays with `ListenerRegistry<T>` instances
-- [ ] Add temp queue APIs: `removeFromPlayNext/UpNext`, `clearPlayNext/UpNext`, `reorderTemporaryTrack`, `getPlayNextQueue`, `getUpNextQueue`
-- [ ] Add `notifyTemporaryQueueChange()` calls to all temp queue mutations
-- [ ] Replace `Collections.synchronizedList` with `CopyOnWriteArrayList` (or just use `ListenerRegistry`)
-- [ ] Replace `synchronized(playlists)` in `PlaylistManager` with `ConcurrentHashMap`
-- [ ] Move `PlaylistManager.scheduleSave()` to `Dispatchers.IO`
-- [ ] Migrate `DownloadDatabase` synchronized to Mutex + IO
-- [ ] Remove `CountDownLatch`, `TimeUnit` imports
-- [ ] Remove all `Looper.myLooper()` guards
-- [ ] Remove timeout fallback states
-- [ ] Update `HybridTrackPlayer.kt` bridge with listener ID tracking + `finalize()`
+**What:** Rewrite all spec files to the v2 API surface defined in Section 3.
 
-### Phase 3 -- iOS: Player Queue + Async
+**Files:**
+- `TrackPlayer.nitro.ts` — all commands become `Promise<void>`, add temp queue APIs, add `onTemporaryQueueChange`
+- `PlayerQueue.nitro.ts` — mutating ops become `Promise<T>`
+- `DownloadManager.nitro.ts` — file-I/O queries become `Promise<T>`, `syncDownloads` becomes `Promise<number>`
+- `Equalizer.nitro.ts` — mutations become `Promise<void>`, reads from player thread become `Promise<T>`
+- `AudioDevices.nitro.ts` — `setAudioDevice` becomes `Promise<void>`
+- `AndroidAutoMediaLibrary.nitro.ts` — both methods become `Promise<void>`
 
-- [ ] Create `playerQueue` serial `DispatchQueue`
-- [ ] Move `AVQueuePlayer` init to `playerQueue`
-- [ ] Implement `withPlayerQueue` helpers
-- [ ] Migrate all 14 `DispatchQueue.main.sync` methods to `withPlayerQueue`
-- [ ] Migrate fire-and-forget commands with error reporting
-- [ ] Replace listener arrays with `ListenerRegistry<T>` instances
-- [ ] Add temp queue APIs (same as Android)
-- [ ] Add `notifyTemporaryQueueChange()` calls
-- [ ] Move KVO/notification handlers to `playerQueue`
-- [ ] Keep `MPNowPlayingInfoCenter` updates on main (async only)
-- [ ] Move `DownloadDatabase` to own serial queue
-- [ ] Remove all `Thread.isMainThread` guards
-- [ ] Remove all `DispatchQueue.main.sync`
-- [ ] Update `HybridTrackPlayer.swift` bridge with listener ID tracking + `deinit`
+**Why first:** The specs are the contract. Everything downstream (codegen, native, hooks) depends on them being correct. Changing specs later means re-running codegen and re-doing bridge work.
 
-### Phase 4 -- TypeScript Specs + Codegen
+**Test:** `npx nitrogen` runs without errors.
 
-- [ ] Update `TrackPlayer.nitro.ts` with v2 API
-- [ ] Update `PlayerQueue.nitro.ts` with v2 API
-- [ ] Update `DownloadManager.nitro.ts` with v2 API
-- [ ] Update `Equalizer.nitro.ts` with v2 API
-- [ ] Update `AudioDevices.nitro.ts` and `AndroidAutoMediaLibrary.nitro.ts`
-- [ ] Run `npx nitrogen` to regenerate
-- [ ] Update all bridge files
-- [ ] Update React hooks
+---
 
-### Phase 5 -- Validation
+### Step 2: Run Nitrogen Codegen
 
-- [ ] Run harness tests on Android
-- [ ] Run harness tests on iOS
-- [ ] Verify Android Auto browsing + playback
-- [ ] Verify CarPlay command handlers
-- [ ] Verify gapless playback still works
-- [ ] Verify lazy URL loading flow
-- [ ] Verify download + offline playback
-- [ ] Verify EQ persists across track changes
-- [ ] Test temp queue: add, play, auto-remove after played
-- [ ] Test temp queue: remove while playing
-- [ ] Test temp queue: clear during playback
-- [ ] Test temp queue: reorder
-- [ ] Test temp queue: interaction with repeat modes
-- [ ] Test temp queue: interaction with skipToIndex
-- [ ] Test temp queue: interaction with playSong
-- [ ] Test listeners: register, receive events, unsubscribe
-- [ ] Test listeners: multiple subscribers
-- [ ] Test listeners: cleanup on HybridObject destroy
-- [ ] Load test: rapid play/pause/skip/seek, 100+ track playlists
+**What:** Run `npx nitrogen` from the package directory to regenerate all bridge code.
+
+**Files changed:** Everything under `nitrogen/generated/` — Swift specs, Kotlin specs, C++ bridges, JNI adapters.
+
+**Test:**  The generated `HybridTrackPlayerSpec` now has `suspend fun play()`, `suspend fun getState()`, etc. on Android. Swift specs have `async throws` signatures.
+
+---
+
+### Step 3: Create `ListenerRegistry<T>` on Both Platforms
+
+**What:** Build the generic listener registry class (Section 5.2).
+
+**Files:**
+- Android: new file `ListenerRegistry.kt` in the `core` package
+- iOS: new file `ListenerRegistry.swift`
+
+**Behavior:** `add(callback) -> Long/Int64`, `remove(id) -> Bool`, `forEach(action)`, `clear()`. Android uses `CopyOnWriteArrayList` + `AtomicLong`. iOS uses own serial queue + `Int64` counter.
+
+**Test:** Unit test — add 3 listeners, forEach fires all 3, remove one by ID, forEach fires 2, clear, forEach fires 0.
+
+---
+
+### Step 4: Create `NitroPlayerError` Enum (iOS)
+
+**What:** Define typed errors for the iOS side.
+
+**File:** New `NitroPlayerError.swift`
+
+```swift
+enum NitroPlayerError: Error {
+    case playerNotInitialized
+    case trackNotFound(String)
+    case invalidPosition(Double)
+    case invalidVolume(Double)
+    case playlistNotFound(String)
+}
+```
+
+**Test:** Compiles. Errors are throwable.
+
+---
+
+### Step 5: Android — Create Dedicated Player Thread + `withPlayerContext`
+
+**What:** The single biggest architectural change on Android. Add `HandlerThread`, `playerHandler`, `playerDispatcher`, `withPlayerContext` helper, `launchOnPlayer` helper to `TrackPlayerCore.kt`.
+
+**Do NOT migrate any methods yet.** Just add the infrastructure alongside the existing code.
+
+**Test:** `withPlayerContext { 42 }` returns 42 from a background thread without blocking. `launchOnPlayer { }` executes on the player thread. ExoPlayer still works on main looper (unchanged).
+
+---
+
+### Step 6: Android — Move ExoPlayer to Player Thread
+
+**What:** Change ExoPlayer initialization to use `.setLooper(playerThread.looper)`. Move the `Player.Listener` setup to the player thread. Change `progressUpdateRunnable` to use `playerHandler` instead of `handler`.
+
+**This is the point of no return for Android.** All ExoPlayer callbacks now fire on the player thread instead of main.
+
+**Test:** Play a track. Verify playback works. Verify `onMediaItemTransition` fires on the player thread. Verify progress updates fire on the player thread.
+
+---
+
+### Step 7: Android — Replace All CountDownLatch Methods with `withPlayerContext`
+
+**What:** Migrate all 10 latch call sites in `TrackPlayerCore.kt`:
+`getState()`, `getActualQueue()`, `skipToIndex()`, `getTracksById()`, `getTracksNeedingUrls()`, `getNextTracks()`, `getCurrentTrackIndex()`, `setPlayBackSpeed()`, `getPlayBackSpeed()`.
+
+Each becomes a one-liner: `suspend fun getState() = withPlayerContext { getStateInternal() }`
+
+Also migrate fire-and-forget commands (`play`, `pause`, `seek`, `skipToNext`, `skipToPrevious`) to `withPlayerContext` with error throwing.
+
+Remove all `Looper.myLooper()` guards. Remove all timeout fallback states. Remove `CountDownLatch` import.
+
+**Test:** All existing harness tests pass on Android. `getState()` returns correct data. `play()`/`pause()` work. Skip works.
+
+---
+
+### Step 8: Android — Replace Listener System with `ListenerRegistry`
+
+**What:** Replace `Collections.synchronizedList(mutableListOf<WeakCallbackBox<...>>())` with `ListenerRegistry<T>` for all 7 event types. Replace `synchronized(listeners) { ... }` notify blocks with `registry.forEach { }`. Remove `WeakCallbackBox` class. Add `notifyTemporaryQueueChange()` method.
+
+Move progress callback dispatch from `handler.post { }` to direct invocation (already on player thread). Same for all other notify methods.
+
+Add the final-position-on-pause emission to `pause()` and `play()`.
+
+**Test:** Register a callback from the bridge. Play a track. Verify callback fires. Verify progress fires every 250ms. Verify it stops on pause. Verify final position on pause is correct.
+
+---
+
+### Step 9: Android — Add Temp Queue APIs + `notifyTemporaryQueueChange`
+
+**What:** Add new methods to `TrackPlayerCore.kt`:
+`removeFromPlayNext`, `removeFromUpNext`, `clearPlayNext`, `clearUpNext`, `reorderTemporaryTrack`, `getPlayNextQueue`, `getUpNextQueue`.
+
+Add `notifyTemporaryQueueChange()` calls to ALL 14 mutation sites (listed in B.10.7).
+
+Fix `playNext` and `addToUpNext` to throw on track not found instead of silently failing.
+
+**Test:** Add track via `playNext`. Verify `onTemporaryQueueChange` fires. Remove it. Verify event fires again. Clear. Verify event. `getPlayNextQueue()` returns correct snapshot.
+
+---
+
+### Step 10: Android — Migrate Supporting Classes
+
+**What:**
+- `PlaylistManager.kt`: Replace `synchronized(playlists)` with `ConcurrentHashMap`. Move `scheduleSave` to `Dispatchers.IO` coroutine.
+- `DownloadDatabase.kt`: Replace `synchronized(this)` with coroutine `Mutex`. Move `saveToDisk`/`loadFromDisk`/`File.exists()` to `Dispatchers.IO`.
+- `EqualizerCore.kt`: Route EQ band mutations through player thread.
+
+**Test:** Create/delete playlists. Download a track. Verify persistence. Verify EQ works.
+
+---
+
+### Step 11: Android — Update `HybridTrackPlayer.kt` Bridge
+
+**What:** Rewrite the bridge to match v2 generated spec. All commands use `Promise.async { core.play() }` (which now calls suspend functions). All callbacks use `ListenerRegistry` IDs tracked in `activeListenerIds`. Add `finalize()` for cleanup. Add `onTemporaryQueueChange` binding.
+
+**Test:** Full Android example app works. All JS API calls succeed. Callbacks fire correctly.
+
+---
+
+### Step 12: iOS — Create Dedicated Player Queue + `withPlayerQueue`
+
+**What:** Add `playerQueue` serial DispatchQueue to `TrackPlayerCore.swift`. Add `withPlayerQueue` helpers (throwing + non-throwing). Move `AVQueuePlayer` initialization to `playerQueue`.
+
+**Do NOT migrate any methods yet.** Infrastructure only.
+
+**Test:** `withPlayerQueue { 42 }` returns 42 from a background thread. Player still works on main (unchanged).
+
+---
+
+### Step 13: iOS — Move AVQueuePlayer to Player Queue + Replace All `DispatchQueue.main.sync`
+
+**What:** Migrate all 14 `DispatchQueue.main.sync` call sites to `withPlayerQueue` (async). Migrate fire-and-forget commands to `playerQueue.async` with error throwing. Move KVO handlers and notification handlers to dispatch onto `playerQueue`. Change periodic time observer queue from `.main` to `playerQueue`. Keep `MPNowPlayingInfoCenter` updates on `DispatchQueue.main.async`.
+
+Remove all `Thread.isMainThread` guards. Remove all `DispatchQueue.main.sync`.
+
+**Test:** All existing harness tests pass on iOS. Play/pause/skip/seek work. State queries return correct data.
+
+---
+
+### Step 14: iOS — Replace Listener System with `ListenerRegistry`
+
+**What:** Same as Step 8 but for iOS. Replace `WeakCallbackBox` arrays + `listenersQueue` with `ListenerRegistry<T>`. Add `notifyTemporaryQueueChange()`. Add final-position-on-pause to `pause()`.
+
+**Test:** Callbacks fire correctly. Progress fires every ~250ms on playerQueue. Final position on pause is accurate.
+
+---
+
+### Step 15: iOS — Add Temp Queue APIs + `notifyTemporaryQueueChange`
+
+**What:** Same as Step 9 but for iOS. Add all new temp queue methods. Add `notifyTemporaryQueueChange()` to all 14 call sites. Fix `playNext`/`addToUpNext` to throw on not found.
+
+**Test:** Full temp queue lifecycle works on iOS. Events fire correctly.
+
+---
+
+### Step 16: iOS — Migrate Supporting Classes + Update Bridge
+
+**What:**
+- Move `DownloadDatabase` to own serial queue for file I/O.
+- Route EQ mutations through `playerQueue`.
+- Rewrite `HybridTrackPlayer.swift` bridge with `ListenerRegistry` ID tracking + `deinit` cleanup + `onTemporaryQueueChange`.
+
+**Test:** Full iOS example app works end-to-end.
+
+---
+
+### Step 17: Rewrite `callbackManager.ts`
+
+**What:** Implement the v2 `CallbackManager` (Section B.2). Add `subscribeTempQueueChange`. Clean up naming. Ensure all native registrations happen once per type.
+
+**Test:** Import and use from a test hook. Verify callbacks fan out to multiple subscribers. Verify unsubscribe works.
+
+---
+
+### Step 18: Rewrite React Hooks
+
+**What:** Implement the three critical hooks (Sections B.3, B.4, B.5):
+- `useActualQueue` — event-driven via `onChangeTrack` + `onTemporaryQueueChange`, version counter, no `setTimeout`
+- `useNowPlaying` — full fetch on track/state change, incremental on progress/seek, version counter
+- `useOnPlaybackProgressChange` — single `useState` object, pure event consumer
+
+Also update all other hooks to use v2 callbackManager methods:
+- `useOnChangeTrack`
+- `useOnPlaybackStateChange`
+- `useOnSeek`
+- `usePlaylist` (if it uses any callbacks)
+- `useEqualizer`, `useEqualizerPresets`
+- `useDownloadProgress`, `useDownloadedTracks`, `useDownloadActions`
+- `useAndroidAutoConnection`
+
+Remove any `setTimeout` or `setInterval` usage across all hooks.
+
+**Test:** Example app renders correct state. Play a song — `useNowPlaying` shows track. Progress bar moves. Skip — queue updates instantly in `useActualQueue`. `playNext` — queue shows temp track with no `setTimeout`/`refreshQueue` needed.
+
+---
+
+### Step 19: Update HybridPlayerQueue + HybridDownloadManager + HybridEqualizer Bridges
+
+**What:** Update the remaining bridge files to match v2 specs:
+- `HybridPlayerQueue.kt` / `.swift` — mutating ops now return Promise
+- `HybridDownloadManager.kt` / `.swift` — file-I/O queries now return Promise
+- `HybridEqualizer.kt` / `.swift` — mutations now return Promise
+- `HybridAudioDevices.kt` — `setAudioDevice` returns Promise
+- `HybridAndroidAutoMediaLibrary.kt` — both methods return Promise
+
+**Test:** All features work in example app. Download a track. Toggle EQ. Manage playlists.
+
+---
+
+### Step 20: Full Validation + Cleanup
+
+**What:** Run the complete test matrix:
+
+Functionality:
+- [ ] Play / pause / stop / seek / skip on both platforms
+- [ ] Gapless playback (verify no audio gap between tracks)
+- [ ] Lazy URL loading (empty URLs -> `onTracksNeedUpdate` -> `updateTracks` -> playback)
+- [ ] Temp queue full lifecycle: add -> play -> auto-remove -> event fires
+- [ ] Temp queue: remove while playing, clear during playback, reorder
+- [ ] Temp queue: interaction with all 3 repeat modes
+- [ ] Temp queue: interaction with `skipToIndex`, `playSong`, `loadPlaylist`
+- [ ] Download + offline playback
+- [ ] Equalizer persists across track changes
+- [ ] Android Auto browsing + playback from media browser
+- [ ] CarPlay controls
+- [ ] Playlists: create, add tracks, remove, reorder, delete
+
+Hooks:
+- [ ] `useNowPlaying` shows correct state on mount, updates on track change, progress moves
+- [ ] `useActualQueue` shows correct queue, updates on temp queue change without `setTimeout`
+- [ ] `useOnPlaybackProgressChange` updates at 250ms, stops on pause, shows final position
+- [ ] Multiple components using same hook simultaneously get correct data
+- [ ] Component unmount doesn't cause errors or memory leaks
+
+Thread safety:
+- [ ] Rapid play/pause/skip 50x in a loop — no crash, no ANR, correct final state
+- [ ] 200-track playlist — load, skip through rapidly, no stale data
+- [ ] `playNext` + `skipToNext` + `getState` in rapid succession — all resolve correctly
+
+Cleanup:
+- [ ] Remove any remaining `CountDownLatch` references
+- [ ] Remove any remaining `DispatchQueue.main.sync` references
+- [ ] Remove any remaining `setTimeout` / `setInterval` in hooks
+- [ ] Remove `WeakCallbackBox` class from both platforms
+- [ ] Remove `isMounted` refs from hooks (not needed with proper cleanup)
+- [ ] Verify no lint errors in all modified files
+
+---
+
+### Step Dependency Graph
+
+```
+Step 1 (Specs)
+  └─► Step 2 (Codegen)
+        ├─► Step 3 (ListenerRegistry — shared)
+        │     ├─► Step 8 (Android listeners)
+        │     └─► Step 14 (iOS listeners)
+        ├─► Step 4 (NitroPlayerError — iOS only)
+        │     └─► Step 13 (iOS player queue)
+        ├─► Step 5 (Android player thread infra)
+        │     └─► Step 6 (Android move ExoPlayer)
+        │           └─► Step 7 (Android kill latches)
+        │                 └─► Step 8 (Android listeners)
+        │                       └─► Step 9 (Android temp queue)
+        │                             └─► Step 10 (Android supporting)
+        │                                   └─► Step 11 (Android bridge)
+        └─► Step 12 (iOS player queue infra)
+              └─► Step 13 (iOS replace main.sync)
+                    └─► Step 14 (iOS listeners)
+                          └─► Step 15 (iOS temp queue)
+                                └─► Step 16 (iOS supporting + bridge)
+
+Steps 11 + 16 (both bridges done)
+  └─► Step 17 (callbackManager.ts)
+        └─► Step 18 (React hooks)
+              └─► Step 19 (remaining bridges)
+                    └─► Step 20 (full validation)
+```
+
+**Critical path:** 1 → 2 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 17 → 18 → 19 → 20 (13 steps)
+
+**Parallelizable:** Steps 5-11 (Android) and Steps 12-16 (iOS) can run in parallel by two developers.
 
 ---
 
