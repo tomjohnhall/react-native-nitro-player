@@ -167,7 +167,7 @@ class EqualizerCore {
       process: tapProcessCallback
     )
 
-    var tap: MTAudioProcessingTap?
+    var tap: Unmanaged<MTAudioProcessingTap>?
     let createStatus = MTAudioProcessingTapCreate(
       kCFAllocatorDefault,
       &callbacks,
@@ -175,7 +175,7 @@ class EqualizerCore {
       &tap
     )
 
-    guard createStatus == noErr, let audioTap = tap else {
+    guard createStatus == noErr, let audioTap = tap?.takeRetainedValue() else {
       NitroPlayerLogger.log("EqualizerCore", "❌ Failed to create audio processing tap, status: \(createStatus)")
       return
     }
